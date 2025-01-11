@@ -125,10 +125,14 @@ const GroupDetails = () => {
 
   const chartData = metrics
     .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-    .map((metric) => ({
-      timestamp: new Date(metric.timestamp).toLocaleTimeString(),
-      viewers: metric.viewers_count,
-    }));
+    .map((metric) => {
+      const channel = channels.find(c => c.id === metric.channel_id);
+      return {
+        timestamp: metric.timestamp,
+        viewers: metric.viewers_count,
+        channelName: channel?.channel_name || 'Unknown',
+      };
+    });
 
   return (
     <div className="p-8">
@@ -203,7 +207,10 @@ const GroupDetails = () => {
         totalViewers={totalViewers}
       />
 
-      <ViewersChart data={chartData} />
+      <ViewersChart 
+        data={chartData} 
+        channels={channels}
+      />
 
       <ChannelsList
         channels={channels}
