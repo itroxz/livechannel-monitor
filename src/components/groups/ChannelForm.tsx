@@ -75,24 +75,17 @@ export function ChannelForm({ groupId, channelId, onSuccess }: ChannelFormProps)
   const fetchTwitchChannelInfo = async (username: string) => {
     try {
       console.log('Fetching Twitch channel info for:', username);
-      const response = await fetch(
-        'https://yvxmkixhezvdmazculvo.supabase.co/functions/v1/get-twitch-channel',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ username }),
-        }
-      );
+      const { data: session } = await supabase.auth.getSession();
+      
+      const { data, error } = await supabase.functions.invoke('get-twitch-channel', {
+        body: { username },
+      });
 
-      if (!response.ok) {
-        const error = await response.json();
+      if (error) {
         console.error('Error response from Twitch API:', error);
-        throw new Error(error.error || 'Falha ao buscar informações do canal');
+        throw new Error('Canal não encontrado. Verifique se o nome do usuário está correto.');
       }
 
-      const data = await response.json();
       console.log('Twitch API response:', data);
       return {
         channel_id: data.id,
