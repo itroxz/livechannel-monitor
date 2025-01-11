@@ -10,6 +10,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
@@ -44,6 +45,32 @@ export function ChannelForm({ groupId, channelId, onSuccess }: ChannelFormProps)
   });
 
   const platform = form.watch("platform");
+
+  const getPlaceholderText = (platform: string) => {
+    switch (platform) {
+      case "twitch":
+        return "Ex: bigodezerah (apenas o nome do usuário)";
+      case "youtube":
+        return "Ex: @channelname ou nome do canal";
+      case "kick":
+        return "Ex: channelname (apenas o nome do usuário)";
+      default:
+        return "Selecione uma plataforma primeiro";
+    }
+  };
+
+  const getHelperText = (platform: string) => {
+    switch (platform) {
+      case "twitch":
+        return "Digite apenas o nome do usuário, não a URL completa. Ex: se o canal é https://www.twitch.tv/bigodezerah, digite apenas 'bigodezerah'";
+      case "youtube":
+        return "Digite o @ do canal ou o nome do canal como aparece na URL";
+      case "kick":
+        return "Digite apenas o nome do usuário como aparece na URL do canal";
+      default:
+        return "";
+    }
+  };
 
   const fetchTwitchChannelInfo = async (username: string) => {
     try {
@@ -183,10 +210,15 @@ export function ChannelForm({ groupId, channelId, onSuccess }: ChannelFormProps)
               <FormLabel>Nome do Canal</FormLabel>
               <FormControl>
                 <Input 
-                  placeholder={`Digite o nome do canal ${platform ? `do ${platform}` : ''}`}
+                  placeholder={getPlaceholderText(platform)}
                   {...field}
                 />
               </FormControl>
+              {platform && (
+                <FormDescription>
+                  {getHelperText(platform)}
+                </FormDescription>
+              )}
               <FormMessage />
             </FormItem>
           )}
