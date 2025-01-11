@@ -33,27 +33,34 @@ const COLORS = [
 ];
 
 export function ViewersChart({ data, channels }: ViewersChartProps) {
-  const uniqueTimestamps = Array.from(new Set(data.map(d => d.timestamp))).sort();
-  
-  const processedData = uniqueTimestamps.map(timestamp => {
-    const dataPoint: Record<string, any> = {
+  // Primeiro, vamos organizar os dados por timestamp
+  const dataByTimestamp = data.reduce((acc: Record<string, Record<string, number>>, curr) => {
+    if (!acc[curr.timestamp]) {
+      acc[curr.timestamp] = {};
+    }
+    acc[curr.timestamp][curr.channelName] = curr.viewers;
+    return acc;
+  }, {});
+
+  // Agora vamos criar um array de timestamps ordenados
+  const sortedTimestamps = Object.keys(dataByTimestamp).sort();
+
+  // Vamos processar os dados para garantir que cada canal tenha um valor em cada timestamp
+  const processedData = sortedTimestamps.map(timestamp => {
+    const timestampData = {
       timestamp,
     };
-    
-    channels.forEach(channel => {
-      dataPoint[channel.channel_name] = 0;
+
+    // Para cada canal, vamos pegar o valor no timestamp atual ou o último valor conhecido
+    channels.forEach((channel, index) => {
+      const viewers = dataByTimestamp[timestamp]?.[channel.channel_name] ?? 0;
+      timestampData[channel.channel_name] = viewers;
     });
-    
-    data.forEach(item => {
-      if (item.timestamp === timestamp) {
-        dataPoint[item.channelName] = item.viewers;
-      }
-    });
-    
-    return dataPoint;
+
+    return timestampData;
   });
 
-  console.log("Processed chart data:", processedData);
+  console.log("Processed data for chart:", processedData);
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length > 0) {
