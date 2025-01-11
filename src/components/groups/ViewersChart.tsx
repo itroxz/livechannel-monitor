@@ -21,25 +21,30 @@ interface ViewersChartProps {
   }>;
 }
 
+// Define better colors for the chart lines
 const COLORS = [
-  "#0ea5e9",
-  "#f97316",
-  "#8b5cf6",
-  "#22c55e",
-  "#ef4444",
-  "#f59e0b",
-  "#06b6d4",
-  "#ec4899",
+  "#9b87f5", // Primary Purple
+  "#0EA5E9", // Ocean Blue
+  "#F97316", // Bright Orange
+  "#D946EF", // Magenta Pink
+  "#22c55e", // Green
+  "#8B5CF6", // Vivid Purple
+  "#06b6d4", // Cyan
+  "#ec4899", // Pink
 ];
 
 export function ViewersChart({ data, channels }: ViewersChartProps) {
-  // Reorganizar dados para ter todos os canais em cada ponto do tempo
+  // Reorganize data to have all channels in each time point
   const organizedData = data.reduce((acc, curr) => {
     const timeKey = curr.timestamp;
     if (!acc[timeKey]) {
       acc[timeKey] = {
         timestamp: curr.timestamp,
       };
+      // Initialize all channels with 0 viewers
+      channels.forEach((channel) => {
+        acc[timeKey][channel.channel_name] = 0;
+      });
     }
     acc[timeKey][curr.channelName] = curr.viewers;
     return acc;
@@ -57,14 +62,12 @@ export function ViewersChart({ data, channels }: ViewersChartProps) {
             {new Date(label).toLocaleTimeString()}
           </p>
           {payload.map((entry: any, index: number) => (
-            entry.value > 0 && (
-              <p key={index} className="text-sm" style={{ color: entry.color }}>
-                {entry.name}: {entry.value} viewers
-              </p>
-            )
+            <p key={index} className="text-sm" style={{ color: entry.color }}>
+              {entry.name}: {entry.value.toLocaleString()} viewers
+            </p>
           ))}
           <p className="text-sm font-medium mt-2 border-t border-border pt-2">
-            Total: {total} viewers
+            Total: {total.toLocaleString()} viewers
           </p>
         </div>
       );
@@ -85,8 +88,12 @@ export function ViewersChart({ data, channels }: ViewersChartProps) {
               const date = new Date(value);
               return date.toLocaleTimeString();
             }}
+            stroke="#888888"
           />
-          <YAxis />
+          <YAxis 
+            stroke="#888888"
+            tickFormatter={(value) => value.toLocaleString()}
+          />
           <Tooltip content={<CustomTooltip />} />
           {channels.map((channel, index) => (
             <Line
@@ -96,6 +103,7 @@ export function ViewersChart({ data, channels }: ViewersChartProps) {
               stroke={COLORS[index % COLORS.length]}
               dot={false}
               strokeWidth={2}
+              activeDot={{ r: 4, strokeWidth: 1 }}
             />
           ))}
         </LineChart>
