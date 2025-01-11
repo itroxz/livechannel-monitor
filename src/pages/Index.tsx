@@ -25,6 +25,7 @@ interface Metric {
   channel_id: string;
   viewers_count: number;
   is_live: boolean;
+  timestamp: string;
 }
 
 const Index = () => {
@@ -63,17 +64,31 @@ const Index = () => {
       const { data, error } = await supabase
         .from("metrics")
         .select("*")
-        .order("timestamp", { ascending: false })
-        .limit(1000);
+        .order("timestamp", { ascending: false });
       if (error) throw error;
       return data as Metric[];
     },
+    refetchInterval: 30000, // Refetch every 30 seconds
   });
+
+  const getLatestMetrics = () => {
+    const latestMetricsByChannel = new Map<string, Metric>();
+    
+    metrics.forEach((metric) => {
+      const existing = latestMetricsByChannel.get(metric.channel_id);
+      if (!existing || new Date(metric.timestamp) > new Date(existing.timestamp)) {
+        latestMetricsByChannel.set(metric.channel_id, metric);
+      }
+    });
+    
+    return Array.from(latestMetricsByChannel.values());
+  };
 
   const getGroupStats = (groupId: string) => {
     const groupChannels = channels.filter((channel) => channel.group_id === groupId);
     const channelIds = groupChannels.map((channel) => channel.id);
-    const groupMetrics = metrics.filter((metric) => 
+    const latestMetrics = getLatestMetrics();
+    const groupMetrics = latestMetrics.filter((metric) => 
       channelIds.includes(metric.channel_id)
     );
 
@@ -90,11 +105,10 @@ const Index = () => {
     };
   };
 
+  const latestMetrics = getLatestMetrics();
   const totalChannels = channels.length;
-  const liveChannels = new Set(
-    metrics.filter((m) => m.is_live).map((m) => m.channel_id)
-  ).size;
-  const totalViewers = metrics
+  const liveChannels = latestMetrics.filter((m) => m.is_live).length;
+  const totalViewers = latestMetrics
     .filter((m) => m.is_live)
     .reduce((sum, m) => sum + m.viewers_count, 0);
 
