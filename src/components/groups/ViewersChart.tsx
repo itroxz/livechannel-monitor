@@ -22,15 +22,18 @@ interface ViewersChartProps {
 }
 
 export function ViewersChart({ data, channels }: ViewersChartProps) {
-  // Agrupa e soma os viewers por timestamp
-  const processedData = data.reduce((acc: Record<string, number>, curr) => {
-    const timestamp = new Date(curr.timestamp).toISOString();
-    acc[timestamp] = (acc[timestamp] || 0) + curr.viewers;
-    return acc;
-  }, {});
+  // Primeiro, vamos criar um Map para armazenar a soma dos viewers por timestamp
+  const viewersByTimestamp = new Map<string, number>();
+  
+  // Processa os dados para somar os viewers de todos os canais no mesmo timestamp
+  data.forEach((entry) => {
+    const timestamp = new Date(entry.timestamp).toISOString();
+    const currentTotal = viewersByTimestamp.get(timestamp) || 0;
+    viewersByTimestamp.set(timestamp, currentTotal + entry.viewers);
+  });
 
-  // Converte para array e ordena por timestamp
-  const chartData = Object.entries(processedData)
+  // Converte o Map para um array de objetos e ordena por timestamp
+  const chartData = Array.from(viewersByTimestamp.entries())
     .map(([timestamp, totalViewers]) => ({
       timestamp,
       totalViewers,
