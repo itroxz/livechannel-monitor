@@ -9,7 +9,91 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      channels: {
+        Row: {
+          channel_id: string
+          channel_name: string
+          created_at: string
+          group_id: string | null
+          id: string
+          platform: string
+        }
+        Insert: {
+          channel_id: string
+          channel_name: string
+          created_at?: string
+          group_id?: string | null
+          id?: string
+          platform: string
+        }
+        Update: {
+          channel_id?: string
+          channel_name?: string
+          created_at?: string
+          group_id?: string | null
+          id?: string
+          platform?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "channels_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      groups: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      metrics: {
+        Row: {
+          channel_id: string | null
+          id: string
+          is_live: boolean
+          timestamp: string
+          viewers_count: number
+        }
+        Insert: {
+          channel_id?: string | null
+          id?: string
+          is_live?: boolean
+          timestamp?: string
+          viewers_count?: number
+        }
+        Update: {
+          channel_id?: string | null
+          id?: string
+          is_live?: boolean
+          timestamp?: string
+          viewers_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "metrics_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
