@@ -64,6 +64,9 @@ const GroupDetails = () => {
     queryKey: ["group-metrics", id],
     queryFn: async () => {
       const channelIds = channels.map((channel) => channel.id);
+      
+      if (channelIds.length === 0) return [];
+
       const { data, error } = await supabase
         .from("metrics")
         .select("*")
@@ -74,6 +77,7 @@ const GroupDetails = () => {
       return data;
     },
     enabled: channels.length > 0,
+    refetchInterval: 30000, // Refetch every 30 seconds
   });
 
   const handleDeleteGroup = async () => {
@@ -100,18 +104,31 @@ const GroupDetails = () => {
     }
   };
 
+  // Get the most recent metrics for each channel
+  const getLatestMetrics = () => {
+    const latestMetricsByChannel = new Map();
+    metrics.forEach((metric) => {
+      const existing = latestMetricsByChannel.get(metric.channel_id);
+      if (!existing || new Date(metric.timestamp) > new Date(existing.timestamp)) {
+        latestMetricsByChannel.set(metric.channel_id, metric);
+      }
+    });
+    return Array.from(latestMetricsByChannel.values());
+  };
+
+  const latestMetrics = getLatestMetrics();
   const totalChannels = channels.length;
-  const liveChannels = new Set(
-    metrics.filter((m) => m.is_live).map((m) => m.channel_id)
-  ).size;
-  const totalViewers = metrics
+  const liveChannels = latestMetrics.filter((m) => m.is_live).length;
+  const totalViewers = latestMetrics
     .filter((m) => m.is_live)
     .reduce((sum, m) => sum + m.viewers_count, 0);
 
-  const chartData = metrics.map((metric) => ({
-    timestamp: new Date(metric.timestamp).toLocaleTimeString(),
-    viewers: metric.viewers_count,
-  }));
+  const chartData = metrics
+    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+    .map((metric) => ({
+      timestamp: new Date(metric.timestamp).toLocaleTimeString(),
+      viewers: metric.viewers_count,
+    }));
 
   return (
     <div className="p-8">
