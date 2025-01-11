@@ -33,32 +33,31 @@ const COLORS = [
 ];
 
 export function ViewersChart({ data, channels }: ViewersChartProps) {
-  // Primeiro, vamos organizar os dados por timestamp
-  const dataByTimestamp = data.reduce((acc: Record<string, Record<string, number>>, curr) => {
-    if (!acc[curr.timestamp]) {
-      acc[curr.timestamp] = {};
+  // Primeiro, vamos agrupar os dados por timestamp
+  const groupedData = data.reduce((acc: Record<string, Record<string, number>>, curr) => {
+    const timestamp = new Date(curr.timestamp).toISOString();
+    
+    if (!acc[timestamp]) {
+      acc[timestamp] = {};
+      // Inicializa todos os canais com 0 para este timestamp
+      channels.forEach(channel => {
+        acc[timestamp][channel.channel_name] = 0;
+      });
     }
-    acc[curr.timestamp][curr.channelName] = curr.viewers;
+    
+    // Atualiza o valor do canal específico
+    acc[timestamp][curr.channelName] = curr.viewers;
+    
     return acc;
   }, {});
 
-  // Agora vamos criar um array de timestamps ordenados
-  const sortedTimestamps = Object.keys(dataByTimestamp).sort();
-
-  // Vamos processar os dados para garantir que cada canal tenha um valor em cada timestamp
-  const processedData = sortedTimestamps.map(timestamp => {
-    const timestampData = {
+  // Converte o objeto agrupado em um array ordenado por timestamp
+  const processedData = Object.entries(groupedData)
+    .map(([timestamp, values]) => ({
       timestamp,
-    };
-
-    // Para cada canal, vamos pegar o valor no timestamp atual ou o último valor conhecido
-    channels.forEach((channel, index) => {
-      const viewers = dataByTimestamp[timestamp]?.[channel.channel_name] ?? 0;
-      timestampData[channel.channel_name] = viewers;
-    });
-
-    return timestampData;
-  });
+      ...values
+    }))
+    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
   console.log("Processed data for chart:", processedData);
 
