@@ -21,41 +21,44 @@ interface ViewersChartProps {
   }>;
 }
 
-// Define better colors for the chart lines
 const COLORS = [
-  "#9b87f5", // Primary Purple
-  "#0EA5E9", // Ocean Blue
-  "#F97316", // Bright Orange
-  "#D946EF", // Magenta Pink
-  "#22c55e", // Green
-  "#8B5CF6", // Vivid Purple
-  "#06b6d4", // Cyan
-  "#ec4899", // Pink
+  "#9b87f5",
+  "#0EA5E9",
+  "#F97316",
+  "#D946EF",
+  "#22c55e",
+  "#8B5CF6",
+  "#06b6d4",
+  "#ec4899",
 ];
 
 export function ViewersChart({ data, channels }: ViewersChartProps) {
-  // Group data by timestamp
-  const groupedData = data.reduce((acc, curr) => {
-    const timestamp = curr.timestamp;
-    if (!acc[timestamp]) {
-      acc[timestamp] = {
-        timestamp,
-        ...channels.reduce((channelAcc, channel) => ({
-          ...channelAcc,
-          [channel.channel_name]: 0
-        }), {})
-      };
-    }
-    acc[timestamp][curr.channelName] = curr.viewers;
-    return acc;
-  }, {} as Record<string, any>);
+  // Primeiro, vamos criar um conjunto de timestamps únicos
+  const uniqueTimestamps = Array.from(new Set(data.map(d => d.timestamp))).sort();
+  
+  // Criar um objeto para armazenar os dados processados
+  const processedData = uniqueTimestamps.map(timestamp => {
+    // Inicializar o objeto com o timestamp
+    const dataPoint: Record<string, any> = {
+      timestamp,
+    };
+    
+    // Inicializar todos os canais com 0 viewers
+    channels.forEach(channel => {
+      dataPoint[channel.channel_name] = 0;
+    });
+    
+    // Preencher com os dados reais
+    data.forEach(item => {
+      if (item.timestamp === timestamp) {
+        dataPoint[item.channelName] = item.viewers;
+      }
+    });
+    
+    return dataPoint;
+  });
 
-  // Convert to array and sort by timestamp
-  const chartData = Object.values(groupedData).sort(
-    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-  );
-
-  console.log("Chart data:", chartData); // Added for debugging
+  console.log("Processed chart data:", processedData);
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length > 0) {
@@ -84,7 +87,7 @@ export function ViewersChart({ data, channels }: ViewersChartProps) {
     <div className="h-[400px] w-full">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart
-          data={chartData}
+          data={processedData}
           margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
         >
           <XAxis 

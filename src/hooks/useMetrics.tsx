@@ -15,9 +15,9 @@ export function useMetrics() {
       const { data, error } = await supabase
         .from("metrics")
         .select("*")
-        .order("timestamp", { ascending: false });
+        .order("timestamp", { ascending: true });
       if (error) throw error;
-      console.log("Metrics data:", data); // Added for debugging
+      console.log("Raw metrics data:", data);
       return data as Metric[];
     },
     refetchInterval: 30000,
@@ -26,21 +26,14 @@ export function useMetrics() {
   const getLatestMetrics = () => {
     const latestMetricsByChannel = new Map<string, Metric>();
     
-    // Sort metrics by timestamp in descending order to get the most recent first
-    const sortedMetrics = [...metrics].sort((a, b) => 
-      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-    );
-    
-    // Only take the most recent metric for each channel
-    sortedMetrics.forEach((metric) => {
-      if (!latestMetricsByChannel.has(metric.channel_id)) {
+    metrics.forEach((metric) => {
+      const existingMetric = latestMetricsByChannel.get(metric.channel_id);
+      if (!existingMetric || new Date(metric.timestamp) > new Date(existingMetric.timestamp)) {
         latestMetricsByChannel.set(metric.channel_id, metric);
       }
     });
     
-    const latestMetrics = Array.from(latestMetricsByChannel.values());
-    console.log("Latest metrics:", latestMetrics); // Added for debugging
-    return latestMetrics;
+    return Array.from(latestMetricsByChannel.values());
   };
 
   const calculateViewerStats = (channelIds?: string[]) => {
