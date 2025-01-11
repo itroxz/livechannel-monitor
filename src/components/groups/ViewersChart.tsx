@@ -22,36 +22,45 @@ interface ViewersChartProps {
 }
 
 export function ViewersChart({ data, channels }: ViewersChartProps) {
-  // Primeiro, vamos criar um Map para armazenar a soma dos viewers por timestamp
-  const viewersByTimestamp = new Map<string, number>();
-  
-  // Processa os dados para somar os viewers de todos os canais no mesmo timestamp
-  data.forEach((entry) => {
-    const timestamp = new Date(entry.timestamp).toISOString();
-    const currentTotal = viewersByTimestamp.get(timestamp) || 0;
-    viewersByTimestamp.set(timestamp, currentTotal + entry.viewers);
-  });
+  // Agrupa os dados por timestamp
+  const groupedData = data.reduce((acc, curr) => {
+    const timestamp = curr.timestamp;
+    if (!acc[timestamp]) {
+      acc[timestamp] = {
+        timestamp,
+        totalViewers: 0,
+        channels: {}
+      };
+    }
+    acc[timestamp].totalViewers += curr.viewers;
+    acc[timestamp].channels[curr.channelName] = curr.viewers;
+    return acc;
+  }, {} as Record<string, { timestamp: string; totalViewers: number; channels: Record<string, number> }>);
 
-  // Converte o Map para um array de objetos e ordena por timestamp
-  const chartData = Array.from(viewersByTimestamp.entries())
-    .map(([timestamp, totalViewers]) => ({
-      timestamp,
-      totalViewers,
-    }))
+  // Converte para array e ordena por timestamp
+  const chartData = Object.values(groupedData)
     .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
-  console.log("Processed data for chart:", chartData);
+  console.log("Processed chart data:", chartData);
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length > 0) {
+      const data = payload[0].payload;
       return (
         <div className="bg-background border border-border rounded-lg p-3 shadow-lg">
           <p className="text-sm font-medium mb-2">
             {new Date(label).toLocaleTimeString()}
           </p>
-          <p className="text-sm font-medium">
-            Total: {payload[0].value.toLocaleString()} viewers
+          <p className="text-sm font-medium mb-2">
+            Total: {data.totalViewers.toLocaleString()} viewers
           </p>
+          <div className="space-y-1">
+            {Object.entries(data.channels).map(([channelName, viewers]) => (
+              <p key={channelName} className="text-sm">
+                {channelName}: {Number(viewers).toLocaleString()} viewers
+              </p>
+            ))}
+          </div>
         </div>
       );
     }
