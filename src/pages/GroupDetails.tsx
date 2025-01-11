@@ -1,13 +1,37 @@
-import { useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useParams, useNavigate } from "react-router-dom";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip } from "@/components/ui/chart";
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer } from "recharts";
-import { ChartBarIcon, ChartLineIcon, Users, Eye } from "lucide-react";
+import { ChartBarIcon, ChartLineIcon, Users, Eye, MoreHorizontal, Pen, Trash, Plus } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+import { GroupFormDialog } from "@/components/groups/GroupFormDialog";
+import { ChannelFormDialog } from "@/components/groups/ChannelFormDialog";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const GroupDetails = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const { data: group } = useQuery({
     queryKey: ["group", id],
@@ -52,6 +76,30 @@ const GroupDetails = () => {
     enabled: channels.length > 0,
   });
 
+  const handleDeleteGroup = async () => {
+    try {
+      const { error } = await supabase.from("groups").delete().eq("id", id);
+      if (error) throw error;
+      toast.success("Grupo excluído com sucesso!");
+      navigate("/");
+    } catch (error) {
+      console.error("Erro ao excluir grupo:", error);
+      toast.error("Erro ao excluir grupo. Tente novamente.");
+    }
+  };
+
+  const handleDeleteChannel = async (channelId: string) => {
+    try {
+      const { error } = await supabase.from("channels").delete().eq("id", channelId);
+      if (error) throw error;
+      toast.success("Canal excluído com sucesso!");
+      queryClient.invalidateQueries({ queryKey: ["group-channels", id] });
+    } catch (error) {
+      console.error("Erro ao excluir canal:", error);
+      toast.error("Erro ao excluir canal. Tente novamente.");
+    }
+  };
+
   const totalChannels = channels.length;
   const liveChannels = new Set(
     metrics.filter((m) => m.is_live).map((m) => m.channel_id)
@@ -67,7 +115,60 @@ const GroupDetails = () => {
 
   return (
     <div className="p-8">
-      <h1 className="text-3xl font-bold mb-8">{group?.name}</h1>
+      <div className="flex items-center justify-between mb-8">
+        <h1 className="text-3xl font-bold">{group?.name}</h1>
+        <div className="flex items-center gap-4">
+          <ChannelFormDialog
+            groupId={id!}
+            trigger={
+              <Button>
+                <Plus className="mr-2 h-4 w-4" /> Adicionar Canal
+              </Button>
+            }
+          />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <GroupFormDialog
+                  groupId={id}
+                  trigger={
+                    <button className="w-full flex items-center">
+                      <Pen className="mr-2 h-4 w-4" /> Editar Grupo
+                    </button>
+                  }
+                />
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <AlertDialog>
+                  <AlertDialogTrigger className="w-full flex items-center text-destructive">
+                    <Trash className="mr-2 h-4 w-4" /> Excluir Grupo
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Excluir Grupo</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Tem certeza que deseja excluir este grupo? Esta ação não pode ser desfeita.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDeleteGroup} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        Excluir
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
 
       <div className="grid gap-4 md:grid-cols-3 mb-8">
         <Card>
@@ -120,18 +221,20 @@ const GroupDetails = () => {
                 },
               }}
             >
-              <AreaChart data={chartData}>
-                <XAxis dataKey="timestamp" />
-                <YAxis />
-                <ChartTooltip />
-                <Area
-                  type="monotone"
-                  dataKey="viewers"
-                  stroke="#0ea5e9"
-                  fill="#0ea5e9"
-                  fillOpacity={0.2}
-                />
-              </AreaChart>
+              <ResponsiveContainer>
+                <AreaChart data={chartData}>
+                  <XAxis dataKey="timestamp" />
+                  <YAxis />
+                  <ChartTooltip />
+                  <Area
+                    type="monotone"
+                    dataKey="viewers"
+                    stroke="#0ea5e9"
+                    fill="#0ea5e9"
+                    fillOpacity={0.2}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
             </ChartContainer>
           </div>
         </CardContent>
@@ -151,10 +254,45 @@ const GroupDetails = () => {
                 <div className="flex items-center gap-4">
                   <Users className="h-4 w-4 text-muted-foreground" />
                   <span>{channel.channel_name}</span>
+                  <span className="text-sm text-muted-foreground">
+                    {channel.platform}
+                  </span>
                 </div>
-                <span className="text-sm text-muted-foreground">
-                  {channel.platform}
-                </span>
+                <div className="flex items-center gap-2">
+                  <ChannelFormDialog
+                    groupId={id!}
+                    channelId={channel.id}
+                    trigger={
+                      <Button variant="ghost" size="icon">
+                        <Pen className="h-4 w-4" />
+                      </Button>
+                    }
+                  />
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <Trash className="h-4 w-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Excluir Canal</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Tem certeza que deseja excluir este canal? Esta ação não pode ser desfeita.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => handleDeleteChannel(channel.id)}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                          Excluir
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
               </div>
             ))}
           </div>
