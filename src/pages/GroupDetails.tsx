@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip } from "@/components/ui/chart";
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer } from "recharts";
-import { ChartBarIcon, ChartLineIcon, Users, Eye, MoreHorizontal, Pen, Trash, Plus } from "lucide-react";
+import { ChartBarIcon, ChartLineIcon, Users, Eye, MoreHorizontal, Pen, Trash, Plus, ArrowLeft } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -115,58 +115,68 @@ const GroupDetails = () => {
 
   return (
     <div className="p-8">
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-bold">{group?.name}</h1>
-        <div className="flex items-center gap-4">
-          <ChannelFormDialog
-            groupId={id!}
-            trigger={
-              <Button>
-                <Plus className="mr-2 h-4 w-4" /> Adicionar Canal
-              </Button>
-            }
-          />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="icon">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem asChild>
-                <GroupFormDialog
-                  groupId={id}
-                  trigger={
-                    <button className="w-full flex items-center">
-                      <Pen className="mr-2 h-4 w-4" /> Editar Grupo
-                    </button>
-                  }
-                />
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <AlertDialog>
-                  <AlertDialogTrigger className="w-full flex items-center text-destructive">
-                    <Trash className="mr-2 h-4 w-4" /> Excluir Grupo
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Excluir Grupo</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Tem certeza que deseja excluir este grupo? Esta ação não pode ser desfeita.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleDeleteGroup} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                        Excluir
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+      <div className="flex items-center gap-4 mb-8">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => navigate("/")}
+          className="shrink-0"
+        >
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <div className="flex items-center justify-between w-full">
+          <h1 className="text-3xl font-bold">{group?.name}</h1>
+          <div className="flex items-center gap-4">
+            <ChannelFormDialog
+              groupId={id!}
+              trigger={
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" /> Adicionar Canal
+                </Button>
+              }
+            />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem asChild>
+                  <GroupFormDialog
+                    groupId={id}
+                    trigger={
+                      <button className="w-full flex items-center">
+                        <Pen className="mr-2 h-4 w-4" /> Editar Grupo
+                      </button>
+                    }
+                  />
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <AlertDialog>
+                    <AlertDialogTrigger className="w-full flex items-center text-destructive">
+                      <Trash className="mr-2 h-4 w-4" /> Excluir Grupo
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Excluir Grupo</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Tem certeza que deseja excluir este grupo? Esta ação não pode ser desfeita.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteGroup} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                          Excluir
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
 
