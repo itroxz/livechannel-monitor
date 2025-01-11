@@ -32,6 +32,9 @@ export function ChannelsList({ channels, groupId, onDeleteChannel }: ChannelsLis
   const { getLatestMetrics } = useMetrics();
   const latestMetrics = getLatestMetrics();
 
+  console.log("Channels:", channels); // Added for debugging
+  console.log("Latest metrics in ChannelsList:", latestMetrics); // Added for debugging
+
   return (
     <Card>
       <CardHeader>
@@ -43,8 +46,11 @@ export function ChannelsList({ channels, groupId, onDeleteChannel }: ChannelsLis
             const channelMetrics = latestMetrics.find(
               (metric) => metric.channel_id === channel.id
             );
-            const isLive = channelMetrics?.is_live || false;
-            const viewersCount = channelMetrics?.viewers_count || 0;
+
+            console.log(`Channel ${channel.channel_name} metrics:`, channelMetrics); // Added for debugging
+
+            const isLive = channelMetrics?.is_live ?? false;
+            const viewersCount = channelMetrics?.viewers_count ?? 0;
 
             return (
               <div
