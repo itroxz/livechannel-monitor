@@ -74,34 +74,31 @@ export function ChannelForm({ groupId, channelId, onSuccess }: ChannelFormProps)
 
   const fetchTwitchChannelInfo = async (username: string) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error("Você precisa estar logado para realizar esta ação");
-        return null;
-      }
-
-      const response = await fetch(`https://api.twitch.tv/helix/users?login=${username}`, {
-        headers: {
-          'Client-ID': process.env.TWITCH_CLIENT_ID || '',
-          'Authorization': `Bearer ${process.env.TWITCH_CLIENT_SECRET}`,
-        },
-      });
+      const response = await fetch(
+        'https://yvxmkixhezvdmazculvo.supabase.co/functions/v1/get-twitch-channel',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({ username }),
+        }
+      );
 
       if (!response.ok) {
-        throw new Error('Failed to fetch Twitch channel info');
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to fetch Twitch channel info');
       }
 
       const data = await response.json();
-      if (data.data && data.data.length > 0) {
-        return {
-          channel_id: data.data[0].id,
-          channel_name: data.data[0].display_name,
-        };
-      }
-      throw new Error('Canal não encontrado');
+      return {
+        channel_id: data.id,
+        channel_name: data.display_name,
+      };
     } catch (error) {
       console.error('Error fetching Twitch channel:', error);
-      toast.error('Erro ao buscar informações do canal da Twitch');
+      toast.error('Erro ao buscar informações do canal da Twitch. Verifique se o nome do usuário está correto.');
       return null;
     }
   };
