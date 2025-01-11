@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip } from "@/components/ui/chart";
-import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
+import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
 import { ChartLineIcon } from "lucide-react";
 
 interface ViewerData {
@@ -33,22 +33,17 @@ const COLORS = [
 ];
 
 export function ViewersChart({ data, channels }: ViewersChartProps) {
-  // Primeiro, vamos criar um conjunto de timestamps únicos
   const uniqueTimestamps = Array.from(new Set(data.map(d => d.timestamp))).sort();
   
-  // Criar um objeto para armazenar os dados processados
   const processedData = uniqueTimestamps.map(timestamp => {
-    // Inicializar o objeto com o timestamp
     const dataPoint: Record<string, any> = {
       timestamp,
     };
     
-    // Inicializar todos os canais com 0 viewers
     channels.forEach(channel => {
       dataPoint[channel.channel_name] = 0;
     });
     
-    // Preencher com os dados reais
     data.forEach(item => {
       if (item.timestamp === timestamp) {
         dataPoint[item.channelName] = item.viewers;
@@ -86,7 +81,7 @@ export function ViewersChart({ data, channels }: ViewersChartProps) {
   return (
     <div className="h-[400px] w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart
+        <AreaChart
           data={processedData}
           margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
         >
@@ -104,17 +99,17 @@ export function ViewersChart({ data, channels }: ViewersChartProps) {
           />
           <Tooltip content={<CustomTooltip />} />
           {channels.map((channel, index) => (
-            <Line
+            <Area
               key={channel.id}
               type="monotone"
               dataKey={channel.channel_name}
+              stackId="1"
               stroke={COLORS[index % COLORS.length]}
-              dot={false}
-              strokeWidth={2}
-              activeDot={{ r: 4, strokeWidth: 1 }}
+              fill={COLORS[index % COLORS.length]}
+              fillOpacity={0.3}
             />
           ))}
-        </LineChart>
+        </AreaChart>
       </ResponsiveContainer>
     </div>
   );
