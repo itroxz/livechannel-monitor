@@ -74,13 +74,13 @@ export function ChannelForm({ groupId, channelId, onSuccess }: ChannelFormProps)
 
   const fetchTwitchChannelInfo = async (username: string) => {
     try {
+      console.log('Fetching Twitch channel info for:', username);
       const response = await fetch(
         'https://yvxmkixhezvdmazculvo.supabase.co/functions/v1/get-twitch-channel',
         {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${process.env.SUPABASE_ANON_KEY}`,
           },
           body: JSON.stringify({ username }),
         }
@@ -88,18 +88,19 @@ export function ChannelForm({ groupId, channelId, onSuccess }: ChannelFormProps)
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || 'Failed to fetch Twitch channel info');
+        console.error('Error response from Twitch API:', error);
+        throw new Error(error.error || 'Falha ao buscar informações do canal');
       }
 
       const data = await response.json();
+      console.log('Twitch API response:', data);
       return {
         channel_id: data.id,
         channel_name: data.display_name,
       };
     } catch (error) {
       console.error('Error fetching Twitch channel:', error);
-      toast.error('Erro ao buscar informações do canal da Twitch. Verifique se o nome do usuário está correto.');
-      return null;
+      throw new Error('Canal não encontrado. Verifique se o nome do usuário está correto.');
     }
   };
 
@@ -119,11 +120,16 @@ export function ChannelForm({ groupId, channelId, onSuccess }: ChannelFormProps)
       };
 
       if (values.platform === 'twitch') {
-        const twitchInfo = await fetchTwitchChannelInfo(values.username);
-        if (!twitchInfo) {
+        try {
+          const twitchInfo = await fetchTwitchChannelInfo(values.username);
+          if (!twitchInfo) {
+            return;
+          }
+          channelInfo = twitchInfo;
+        } catch (error) {
+          toast.error(error.message);
           return;
         }
-        channelInfo = twitchInfo;
       }
 
       if (channelId) {
