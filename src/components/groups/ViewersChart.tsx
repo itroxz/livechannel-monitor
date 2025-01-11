@@ -1,7 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChartContainer, ChartTooltip } from "@/components/ui/chart";
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
-import { ChartLineIcon } from "lucide-react";
 
 interface ViewerData {
   timestamp: string;
@@ -10,11 +8,7 @@ interface ViewerData {
 }
 
 interface ViewersChartProps {
-  data: Array<{
-    timestamp: string;
-    viewers: number;
-    channelName: string;
-  }>;
+  data: ViewerData[];
   channels: Array<{
     id: string;
     channel_name: string;
@@ -22,42 +16,48 @@ interface ViewersChartProps {
 }
 
 export function ViewersChart({ data, channels }: ViewersChartProps) {
-  // Agrupa os dados por timestamp
-  const groupedData = data.reduce((acc, curr) => {
+  // Processar os dados para o gráfico
+  const processedData = data.reduce((acc, curr) => {
     const timestamp = curr.timestamp;
     if (!acc[timestamp]) {
       acc[timestamp] = {
         timestamp,
         totalViewers: 0,
-        channels: {}
+        channelData: {}
       };
     }
+    
     acc[timestamp].totalViewers += curr.viewers;
-    acc[timestamp].channels[curr.channelName] = curr.viewers;
+    acc[timestamp].channelData[curr.channelName] = curr.viewers;
+    
     return acc;
-  }, {} as Record<string, { timestamp: string; totalViewers: number; channels: Record<string, number> }>);
+  }, {} as Record<string, { 
+    timestamp: string; 
+    totalViewers: number; 
+    channelData: Record<string, number>; 
+  }>);
 
-  // Converte para array e ordena por timestamp
-  const chartData = Object.values(groupedData)
+  // Converter para array e ordenar
+  const chartData = Object.values(processedData)
     .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
-  console.log("Processed chart data:", chartData);
+  console.log("Dados processados para o gráfico:", chartData);
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length > 0) {
       const data = payload[0].payload;
       return (
-        <div className="bg-background border border-border rounded-lg p-3 shadow-lg">
-          <p className="text-sm font-medium mb-2">
+        <div className="bg-white border rounded-lg p-4 shadow-lg">
+          <p className="font-medium mb-2">
             {new Date(label).toLocaleTimeString()}
           </p>
-          <p className="text-sm font-medium mb-2">
+          <p className="font-medium text-lg mb-2">
             Total: {data.totalViewers.toLocaleString()} viewers
           </p>
           <div className="space-y-1">
-            {Object.entries(data.channels).map(([channelName, viewers]) => (
-              <p key={channelName} className="text-sm">
-                {channelName}: {Number(viewers).toLocaleString()} viewers
+            {Object.entries(data.channelData).map(([channel, viewers]) => (
+              <p key={channel} className="text-sm">
+                {channel}: {Number(viewers).toLocaleString()} viewers
               </p>
             ))}
           </div>
@@ -76,10 +76,7 @@ export function ViewersChart({ data, channels }: ViewersChartProps) {
         >
           <XAxis
             dataKey="timestamp"
-            tickFormatter={(value) => {
-              const date = new Date(value);
-              return date.toLocaleTimeString();
-            }}
+            tickFormatter={(value) => new Date(value).toLocaleTimeString()}
             stroke="#888888"
           />
           <YAxis
