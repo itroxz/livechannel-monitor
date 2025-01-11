@@ -36,19 +36,38 @@ export function GroupForm({ groupId, onSuccess }: GroupFormProps) {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
       setIsLoading(true);
+      
+      // Check if user is authenticated
+      const { data: session } = await supabase.auth.getSession();
+      if (!session.session) {
+        toast.error("Você precisa estar logado para realizar esta ação");
+        return;
+      }
+
       if (groupId) {
         const { error } = await supabase
           .from("groups")
           .update({ name: values.name })
           .eq("id", groupId);
-        if (error) throw error;
+        if (error) {
+          if (error.code === "42501") {
+            toast.error("Você não tem permissão para atualizar este grupo");
+            return;
+          }
+          throw error;
+        }
         toast.success("Grupo atualizado com sucesso!");
       } else {
-        // Here's the fix - we pass a single object instead of an array
         const { error } = await supabase
           .from("groups")
           .insert({ name: values.name });
-        if (error) throw error;
+        if (error) {
+          if (error.code === "42501") {
+            toast.error("Você não tem permissão para criar grupos");
+            return;
+          }
+          throw error;
+        }
         toast.success("Grupo criado com sucesso!");
       }
       form.reset();
