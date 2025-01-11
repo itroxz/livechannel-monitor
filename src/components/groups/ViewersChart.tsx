@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip } from "@/components/ui/chart";
-import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
+import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
 import { ChartLineIcon } from "lucide-react";
 
 interface ViewerData {
@@ -33,21 +33,19 @@ const COLORS = [
 ];
 
 export function ViewersChart({ data, channels }: ViewersChartProps) {
-  // Agrupar dados por timestamp para calcular o total
-  const groupedData = data.reduce((acc, curr) => {
-    const existing = acc.find(item => item.timestamp === curr.timestamp);
-    if (existing) {
-      existing.total = (existing.total || 0) + curr.viewers;
-      existing[curr.channelName] = curr.viewers;
-    } else {
-      acc.push({
+  // Reorganizar dados para ter todos os canais em cada ponto do tempo
+  const organizedData = data.reduce((acc, curr) => {
+    const timeKey = curr.timestamp;
+    if (!acc[timeKey]) {
+      acc[timeKey] = {
         timestamp: curr.timestamp,
-        total: curr.viewers,
-        [curr.channelName]: curr.viewers,
-      });
+      };
     }
+    acc[timeKey][curr.channelName] = curr.viewers;
     return acc;
-  }, [] as any[]);
+  }, {} as Record<string, any>);
+
+  const chartData = Object.values(organizedData);
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length > 0) {
@@ -55,7 +53,9 @@ export function ViewersChart({ data, channels }: ViewersChartProps) {
       
       return (
         <div className="bg-background border border-border rounded-lg p-3 shadow-lg">
-          <p className="text-sm font-medium mb-2">{label}</p>
+          <p className="text-sm font-medium mb-2">
+            {new Date(label).toLocaleTimeString()}
+          </p>
           {payload.map((entry: any, index: number) => (
             entry.value > 0 && (
               <p key={index} className="text-sm" style={{ color: entry.color }}>
@@ -73,44 +73,33 @@ export function ViewersChart({ data, channels }: ViewersChartProps) {
   };
 
   return (
-    <Card className="mb-8">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <ChartLineIcon className="h-4 w-4" />
-          Evolução de Viewers
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="h-[400px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart
-              data={groupedData}
-              margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-            >
-              <XAxis 
-                dataKey="timestamp"
-                tickFormatter={(value) => {
-                  const date = new Date(value);
-                  return date.toLocaleTimeString();
-                }}
-              />
-              <YAxis />
-              <Tooltip content={<CustomTooltip />} />
-              {channels.map((channel, index) => (
-                <Area
-                  key={channel.id}
-                  type="monotone"
-                  dataKey={channel.channel_name}
-                  stackId="1"
-                  stroke={COLORS[index % COLORS.length]}
-                  fill={COLORS[index % COLORS.length]}
-                  fillOpacity={0.2}
-                />
-              ))}
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </CardContent>
-    </Card>
+    <div className="h-[400px] w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart
+          data={chartData}
+          margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+        >
+          <XAxis 
+            dataKey="timestamp"
+            tickFormatter={(value) => {
+              const date = new Date(value);
+              return date.toLocaleTimeString();
+            }}
+          />
+          <YAxis />
+          <Tooltip content={<CustomTooltip />} />
+          {channels.map((channel, index) => (
+            <Line
+              key={channel.id}
+              type="monotone"
+              dataKey={channel.channel_name}
+              stroke={COLORS[index % COLORS.length]}
+              dot={false}
+              strokeWidth={2}
+            />
+          ))}
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
   );
 }
