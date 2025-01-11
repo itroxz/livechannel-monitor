@@ -4,9 +4,12 @@ import { AppSidebar } from "@/components/layout/Sidebar";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { GroupCard } from "@/components/dashboard/GroupCard";
 import { GroupFormDialog } from "@/components/groups/GroupFormDialog";
-import { Users, Video, Eye } from "lucide-react";
+import { Users, Video, Eye, LogOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 interface Group {
   id: string;
@@ -25,6 +28,17 @@ interface Metric {
 }
 
 const Index = () => {
+  const navigate = useNavigate();
+  
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      toast.error("Erro ao fazer logout");
+      return;
+    }
+    navigate("/login");
+  };
+
   const { data: groups = [], refetch: refetchGroups } = useQuery({
     queryKey: ["groups"],
     queryFn: async () => {
@@ -91,7 +105,13 @@ const Index = () => {
         <main className="flex-1 p-8">
           <div className="flex justify-between items-center mb-8">
             <h1 className="text-3xl font-bold">Dashboard</h1>
-            <GroupFormDialog onSuccess={refetchGroups} />
+            <div className="flex gap-4">
+              <GroupFormDialog onSuccess={refetchGroups} />
+              <Button variant="outline" onClick={handleLogout}>
+                <LogOut className="h-4 w-4 mr-2" />
+                Sair
+              </Button>
+            </div>
           </div>
 
           <div className="grid gap-4 md:grid-cols-3 mb-8">
