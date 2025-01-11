@@ -118,14 +118,14 @@ export function HistoryView() {
             </CardTitle>
             <div className="flex gap-4">
               <Select
-                value={selectedGroupId || ""}
-                onValueChange={(value) => setSelectedGroupId(value || null)}
+                value={selectedGroupId || "all"}
+                onValueChange={(value) => setSelectedGroupId(value === "all" ? null : value)}
               >
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Todos os grupos" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos os grupos</SelectItem>
+                  <SelectItem value="all">Todos os grupos</SelectItem>
                   {groups.map((group) => (
                     <SelectItem key={group.id} value={group.id}>
                       {group.name}
