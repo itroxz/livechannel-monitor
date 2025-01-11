@@ -1,5 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
+import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, BarChart, Bar, Legend } from "recharts";
 
 interface ViewerData {
   timestamp: string;
@@ -22,20 +21,13 @@ export function ViewersChart({ data, channels }: ViewersChartProps) {
     if (!acc[timestamp]) {
       acc[timestamp] = {
         timestamp,
-        totalViewers: 0,
-        channelData: {}
       };
     }
     
-    acc[timestamp].totalViewers += curr.viewers;
-    acc[timestamp].channelData[curr.channelName] = curr.viewers;
+    acc[timestamp][curr.channelName] = curr.viewers;
     
     return acc;
-  }, {} as Record<string, { 
-    timestamp: string; 
-    totalViewers: number; 
-    channelData: Record<string, number>; 
-  }>);
+  }, {} as Record<string, any>);
 
   // Converter para array e ordenar
   const chartData = Object.values(processedData)
@@ -45,19 +37,20 @@ export function ViewersChart({ data, channels }: ViewersChartProps) {
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length > 0) {
-      const data = payload[0].payload;
+      const total = payload.reduce((sum: number, entry: any) => sum + (entry.value || 0), 0);
+      
       return (
         <div className="bg-white border rounded-lg p-4 shadow-lg">
           <p className="font-medium mb-2">
             {new Date(label).toLocaleTimeString()}
           </p>
           <p className="font-medium text-lg mb-2">
-            Total: {data.totalViewers.toLocaleString()} viewers
+            Total: {total.toLocaleString()} viewers
           </p>
           <div className="space-y-1">
-            {Object.entries(data.channelData).map(([channel, viewers]) => (
-              <p key={channel} className="text-sm">
-                {channel}: {Number(viewers).toLocaleString()} viewers
+            {payload.map((entry: any) => (
+              <p key={entry.dataKey} className="text-sm">
+                {entry.dataKey}: {entry.value.toLocaleString()} viewers
               </p>
             ))}
           </div>
@@ -67,10 +60,16 @@ export function ViewersChart({ data, channels }: ViewersChartProps) {
     return null;
   };
 
+  // Gerar cores únicas para cada canal
+  const colors = [
+    "#8884d8", "#82ca9d", "#ffc658", "#ff7300", "#a4de6c",
+    "#d0ed57", "#83a6ed", "#8dd1e1", "#a4de6c", "#d0ed57"
+  ];
+
   return (
     <div className="h-[400px] w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart
+        <BarChart
           data={chartData}
           margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
         >
@@ -84,14 +83,16 @@ export function ViewersChart({ data, channels }: ViewersChartProps) {
             tickFormatter={(value) => value.toLocaleString()}
           />
           <Tooltip content={<CustomTooltip />} />
-          <Line
-            type="monotone"
-            dataKey="totalViewers"
-            stroke="#8884d8"
-            strokeWidth={2}
-            dot={false}
-          />
-        </LineChart>
+          <Legend />
+          {channels.map((channel, index) => (
+            <Bar
+              key={channel.id}
+              dataKey={channel.channel_name}
+              stackId="a"
+              fill={colors[index % colors.length]}
+            />
+          ))}
+        </BarChart>
       </ResponsiveContainer>
     </div>
   );
