@@ -45,6 +45,55 @@ export function ChannelForm({ groupId, channelId, onSuccess }: ChannelFormProps)
     },
   });
 
+  const platform = form.watch("platform");
+
+  const fetchTwitchChannelInfo = async (username: string) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("Você precisa estar logado para realizar esta ação");
+        return null;
+      }
+
+      const response = await fetch(`https://api.twitch.tv/helix/users?login=${username}`, {
+        headers: {
+          'Client-ID': process.env.TWITCH_CLIENT_ID || '',
+          'Authorization': `Bearer ${process.env.TWITCH_CLIENT_SECRET}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch Twitch channel info');
+      }
+
+      const data = await response.json();
+      if (data.data && data.data.length > 0) {
+        return {
+          channel_id: data.data[0].id,
+          channel_name: data.data[0].display_name,
+        };
+      }
+      throw new Error('Canal não encontrado');
+    } catch (error) {
+      console.error('Error fetching Twitch channel:', error);
+      toast.error('Erro ao buscar informações do canal da Twitch');
+      return null;
+    }
+  };
+
+  const handleTwitchUsernameChange = async (username: string) => {
+    if (!username) return;
+    
+    setIsLoading(true);
+    const channelInfo = await fetchTwitchChannelInfo(username);
+    setIsLoading(false);
+    
+    if (channelInfo) {
+      form.setValue('channel_id', channelInfo.channel_id);
+      form.setValue('channel_name', channelInfo.channel_name);
+    }
+  };
+
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
       setIsLoading(true);
@@ -127,32 +176,49 @@ export function ChannelForm({ groupId, channelId, onSuccess }: ChannelFormProps)
             </FormItem>
           )}
         />
-        <FormField
-          control={form.control}
-          name="channel_id"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>ID do Canal</FormLabel>
-              <FormControl>
-                <Input placeholder="Digite o ID do canal" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="channel_name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Nome do Canal</FormLabel>
-              <FormControl>
-                <Input placeholder="Digite o nome do canal" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        
+        {platform === 'twitch' ? (
+          <FormItem>
+            <FormLabel>Nome do Canal</FormLabel>
+            <FormControl>
+              <Input 
+                placeholder="Digite o nome do canal da Twitch"
+                onChange={(e) => handleTwitchUsernameChange(e.target.value)}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        ) : (
+          <>
+            <FormField
+              control={form.control}
+              name="channel_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>ID do Canal</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Digite o ID do canal" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="channel_name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nome do Canal</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Digite o nome do canal" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </>
+        )}
+        
         <Button type="submit" disabled={isLoading}>
           {isLoading ? "Salvando..." : channelId ? "Atualizar" : "Criar"}
         </Button>
