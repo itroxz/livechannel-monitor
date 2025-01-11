@@ -34,23 +34,32 @@ const COLORS = [
 ];
 
 export function ViewersChart({ data, channels }: ViewersChartProps) {
-  // Reorganize data to have all channels in each time point
-  const organizedData = data.reduce((acc, curr) => {
-    const timeKey = curr.timestamp;
-    if (!acc[timeKey]) {
-      acc[timeKey] = {
+  // Group data by timestamp to ensure all channels are represented at each time point
+  const groupedData = data.reduce((acc, curr) => {
+    const existingTimepoint = acc.find(item => item.timestamp === curr.timestamp);
+    
+    if (existingTimepoint) {
+      existingTimepoint[curr.channelName] = curr.viewers;
+    } else {
+      const newTimepoint: any = {
         timestamp: curr.timestamp,
       };
-      // Initialize all channels with 0 viewers
-      channels.forEach((channel) => {
-        acc[timeKey][channel.channel_name] = 0;
+      // Initialize all channels with 0
+      channels.forEach(channel => {
+        newTimepoint[channel.channel_name] = 0;
       });
+      // Set the current channel's value
+      newTimepoint[curr.channelName] = curr.viewers;
+      acc.push(newTimepoint);
     }
-    acc[timeKey][curr.channelName] = curr.viewers;
+    
     return acc;
-  }, {} as Record<string, any>);
+  }, [] as any[]);
 
-  const chartData = Object.values(organizedData);
+  // Sort data by timestamp
+  const chartData = groupedData.sort((a, b) => 
+    new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+  );
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length > 0) {
