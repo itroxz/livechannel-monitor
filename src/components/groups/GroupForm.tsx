@@ -44,7 +44,10 @@ export function GroupForm({ groupId, onSuccess }: GroupFormProps) {
         if (error) throw error;
         toast.success("Grupo atualizado com sucesso!");
       } else {
-        const { error } = await supabase.from("groups").insert([values]);
+        // Here's the fix - we pass a single object instead of an array
+        const { error } = await supabase
+          .from("groups")
+          .insert({ name: values.name });
         if (error) throw error;
         toast.success("Grupo criado com sucesso!");
       }
