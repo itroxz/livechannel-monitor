@@ -34,31 +34,28 @@ const COLORS = [
 ];
 
 export function ViewersChart({ data, channels }: ViewersChartProps) {
-  // Group data by timestamp to ensure all channels are represented at each time point
-  const groupedData = data.reduce((acc, curr) => {
-    const existingTimepoint = acc.find(item => item.timestamp === curr.timestamp);
-    
-    if (existingTimepoint) {
-      existingTimepoint[curr.channelName] = curr.viewers;
-    } else {
-      const newTimepoint: any = {
-        timestamp: curr.timestamp,
+  // Create a map of all unique timestamps
+  const timestampMap = new Map();
+  data.forEach((item) => {
+    const timestamp = item.timestamp;
+    if (!timestampMap.has(timestamp)) {
+      const dataPoint: any = {
+        timestamp,
       };
       // Initialize all channels with 0
-      channels.forEach(channel => {
-        newTimepoint[channel.channel_name] = 0;
+      channels.forEach((channel) => {
+        dataPoint[channel.channel_name] = 0;
       });
-      // Set the current channel's value
-      newTimepoint[curr.channelName] = curr.viewers;
-      acc.push(newTimepoint);
+      timestampMap.set(timestamp, dataPoint);
     }
-    
-    return acc;
-  }, [] as any[]);
+    // Update the viewers count for the specific channel
+    const dataPoint = timestampMap.get(timestamp);
+    dataPoint[item.channelName] = item.viewers;
+  });
 
-  // Sort data by timestamp
-  const chartData = groupedData.sort((a, b) => 
-    new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+  // Convert map to array and sort by timestamp
+  const chartData = Array.from(timestampMap.values()).sort(
+    (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
   );
 
   const CustomTooltip = ({ active, payload, label }: any) => {
