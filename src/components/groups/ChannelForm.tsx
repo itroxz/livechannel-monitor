@@ -24,8 +24,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 const formSchema = z.object({
   platform: z.string().min(1, "Plataforma é obrigatória"),
-  channel_id: z.string().min(1, "ID do canal é obrigatório"),
-  channel_name: z.string().min(1, "Nome do canal é obrigatório"),
+  username: z.string().min(1, "Nome do usuário é obrigatório"),
 });
 
 interface ChannelFormProps {
@@ -40,8 +39,7 @@ export function ChannelForm({ groupId, channelId, onSuccess }: ChannelFormProps)
     resolver: zodResolver(formSchema),
     defaultValues: {
       platform: "",
-      channel_id: "",
-      channel_name: "",
+      username: "",
     },
   });
 
@@ -81,19 +79,6 @@ export function ChannelForm({ groupId, channelId, onSuccess }: ChannelFormProps)
     }
   };
 
-  const handleTwitchUsernameChange = async (username: string) => {
-    if (!username) return;
-    
-    setIsLoading(true);
-    const channelInfo = await fetchTwitchChannelInfo(username);
-    setIsLoading(false);
-    
-    if (channelInfo) {
-      form.setValue('channel_id', channelInfo.channel_id);
-      form.setValue('channel_name', channelInfo.channel_name);
-    }
-  };
-
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     try {
       setIsLoading(true);
@@ -104,13 +89,26 @@ export function ChannelForm({ groupId, channelId, onSuccess }: ChannelFormProps)
         return;
       }
 
+      let channelInfo = {
+        channel_id: values.username,
+        channel_name: values.username
+      };
+
+      if (values.platform === 'twitch') {
+        const twitchInfo = await fetchTwitchChannelInfo(values.username);
+        if (!twitchInfo) {
+          return;
+        }
+        channelInfo = twitchInfo;
+      }
+
       if (channelId) {
         const { error } = await supabase
           .from("channels")
           .update({
             platform: values.platform,
-            channel_id: values.channel_id,
-            channel_name: values.channel_name,
+            channel_id: channelInfo.channel_id,
+            channel_name: channelInfo.channel_name,
           })
           .eq("id", channelId);
 
@@ -128,8 +126,8 @@ export function ChannelForm({ groupId, channelId, onSuccess }: ChannelFormProps)
           .insert({
             group_id: groupId,
             platform: values.platform,
-            channel_id: values.channel_id,
-            channel_name: values.channel_name,
+            channel_id: channelInfo.channel_id,
+            channel_name: channelInfo.channel_name,
           });
 
         if (error) {
@@ -177,47 +175,22 @@ export function ChannelForm({ groupId, channelId, onSuccess }: ChannelFormProps)
           )}
         />
         
-        {platform === 'twitch' ? (
-          <FormItem>
-            <FormLabel>Nome do Canal</FormLabel>
-            <FormControl>
-              <Input 
-                placeholder="Digite o nome do canal da Twitch"
-                onChange={(e) => handleTwitchUsernameChange(e.target.value)}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        ) : (
-          <>
-            <FormField
-              control={form.control}
-              name="channel_id"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>ID do Canal</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Digite o ID do canal" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="channel_name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nome do Canal</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Digite o nome do canal" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </>
-        )}
+        <FormField
+          control={form.control}
+          name="username"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Nome do Canal</FormLabel>
+              <FormControl>
+                <Input 
+                  placeholder={`Digite o nome do canal ${platform ? `do ${platform}` : ''}`}
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         
         <Button type="submit" disabled={isLoading}>
           {isLoading ? "Salvando..." : channelId ? "Atualizar" : "Criar"}
