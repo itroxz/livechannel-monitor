@@ -139,11 +139,11 @@ const Index = () => {
               return (
                 <GroupCard
                   key={group.id}
+                  id={group.id}
                   name={group.name}
                   totalChannels={stats.totalChannels}
                   liveChannels={stats.liveChannels}
                   totalViewers={stats.totalViewers}
-                  onClick={() => console.log(`Clicked group ${group.id}`)}
                 />
               );
             })}
