@@ -1,24 +1,29 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Eye, Users } from "lucide-react";
+import { Users, Eye } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 interface GroupCardProps {
+  id: string;
   name: string;
   totalChannels: number;
   liveChannels: number;
   totalViewers: number;
-  onClick?: () => void;
 }
 
 export function GroupCard({
+  id,
   name,
   totalChannels,
   liveChannels,
   totalViewers,
-  onClick,
 }: GroupCardProps) {
+  const navigate = useNavigate();
+
   return (
-    <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={onClick}>
+    <Card 
+      className="hover:shadow-lg transition-shadow cursor-pointer" 
+      onClick={() => navigate(`/groups/${id}`)}
+    >
       <CardHeader>
         <CardTitle className="text-xl">{name}</CardTitle>
       </CardHeader>
