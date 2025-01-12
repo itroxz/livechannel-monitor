@@ -8,6 +8,7 @@ import { GroupStats } from "@/components/groups/GroupStats";
 import { ViewersChart } from "@/components/groups/ViewersChart";
 import { ChannelsList } from "@/components/groups/ChannelsList";
 import { Plus, ArrowLeft, MoreHorizontal, Pen, Trash } from "lucide-react";
+import { useEffect } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -80,6 +81,29 @@ const GroupDetails = () => {
     refetchInterval: 30000, // Refetch every 30 seconds
   });
 
+  // Configurar real-time updates para canais
+  useEffect(() => {
+    const channel = supabase
+      .channel('group-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'channels',
+          filter: `group_id=eq.${id}`
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["group-channels", id] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [id, queryClient]);
+
   const handleDeleteGroup = async () => {
     try {
       const { error } = await supabase.from("groups").delete().eq("id", id);
@@ -103,25 +127,6 @@ const GroupDetails = () => {
       toast.error("Erro ao excluir canal. Tente novamente.");
     }
   };
-
-  // Get the most recent metrics for each channel
-  const getLatestMetrics = () => {
-    const latestMetricsByChannel = new Map();
-    metrics.forEach((metric) => {
-      const existing = latestMetricsByChannel.get(metric.channel_id);
-      if (!existing || new Date(metric.timestamp) > new Date(existing.timestamp)) {
-        latestMetricsByChannel.set(metric.channel_id, metric);
-      }
-    });
-    return Array.from(latestMetricsByChannel.values());
-  };
-
-  const latestMetrics = getLatestMetrics();
-  const totalChannels = channels.length;
-  const liveChannels = latestMetrics.filter((m) => m.is_live).length;
-  const totalViewers = latestMetrics
-    .filter((m) => m.is_live)
-    .reduce((sum, m) => sum + m.viewers_count, 0);
 
   const chartData = metrics
     .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
@@ -202,9 +207,9 @@ const GroupDetails = () => {
       </div>
 
       <GroupStats
-        totalChannels={totalChannels}
-        liveChannels={liveChannels}
-        totalViewers={totalViewers}
+        totalChannels={channels.length}
+        liveChannels={chartData.filter((m) => m.viewers > 0).length}
+        totalViewers={chartData.reduce((sum, m) => sum + m.viewers, 0)}
       />
 
       <ViewersChart 

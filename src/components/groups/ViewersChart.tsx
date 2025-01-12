@@ -1,4 +1,4 @@
-import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, BarChart, Bar, Legend } from "recharts";
+import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend } from "recharts";
 
 interface ViewerData {
   timestamp: string;
@@ -21,10 +21,14 @@ export function ViewersChart({ data, channels }: ViewersChartProps) {
     if (!acc[timestamp]) {
       acc[timestamp] = {
         timestamp,
+        total: 0,
       };
     }
     
     acc[timestamp][curr.channelName] = curr.viewers;
+    acc[timestamp].total = Object.values(acc[timestamp])
+      .filter((value): value is number => typeof value === 'number' && value !== acc[timestamp].total)
+      .reduce((sum, value) => sum + value, 0);
     
     return acc;
   }, {} as Record<string, any>);
@@ -37,22 +41,22 @@ export function ViewersChart({ data, channels }: ViewersChartProps) {
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length > 0) {
-      const total = payload.reduce((sum: number, entry: any) => sum + (entry.value || 0), 0);
-      
       return (
         <div className="bg-white border rounded-lg p-4 shadow-lg">
           <p className="font-medium mb-2">
             {new Date(label).toLocaleTimeString()}
           </p>
           <p className="font-medium text-lg mb-2">
-            Total: {total.toLocaleString()} viewers
+            Total: {payload.find((p: any) => p.dataKey === 'total')?.value.toLocaleString() || 0} viewers
           </p>
           <div className="space-y-1">
-            {payload.map((entry: any) => (
-              <p key={entry.dataKey} className="text-sm">
-                {entry.dataKey}: {entry.value.toLocaleString()} viewers
-              </p>
-            ))}
+            {payload
+              .filter((entry: any) => entry.dataKey !== 'total')
+              .map((entry: any) => (
+                <p key={entry.dataKey} className="text-sm">
+                  {entry.dataKey}: {entry.value?.toLocaleString() || 0} viewers
+                </p>
+              ))}
           </div>
         </div>
       );
@@ -69,7 +73,7 @@ export function ViewersChart({ data, channels }: ViewersChartProps) {
   return (
     <div className="h-[400px] w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart
+        <LineChart
           data={chartData}
           margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
         >
@@ -84,15 +88,24 @@ export function ViewersChart({ data, channels }: ViewersChartProps) {
           />
           <Tooltip content={<CustomTooltip />} />
           <Legend />
+          <Line
+            type="monotone"
+            dataKey="total"
+            stroke="#000000"
+            strokeWidth={2}
+            dot={false}
+            name="Total"
+          />
           {channels.map((channel, index) => (
-            <Bar
+            <Line
               key={channel.id}
+              type="monotone"
               dataKey={channel.channel_name}
-              stackId="a"
-              fill={colors[index % colors.length]}
+              stroke={colors[index % colors.length]}
+              dot={false}
             />
           ))}
-        </BarChart>
+        </LineChart>
       </ResponsiveContainer>
     </div>
   );
