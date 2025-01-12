@@ -84,7 +84,7 @@ const GroupDetails = () => {
       return data;
     },
     enabled: channels.length > 0,
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: 30000,
   });
 
   // Configurar real-time updates para canais
@@ -137,6 +137,25 @@ const GroupDetails = () => {
       toast.error("Erro ao excluir canal. Tente novamente.");
     }
   };
+
+  // Obter as métricas mais recentes para cada canal
+  const getLatestMetricsByChannel = () => {
+    const latestMetrics = new Map();
+    
+    metrics.forEach((metric) => {
+      const existing = latestMetrics.get(metric.channel_id);
+      if (!existing || new Date(metric.timestamp) > new Date(existing.timestamp)) {
+        latestMetrics.set(metric.channel_id, metric);
+      }
+    });
+    
+    return Array.from(latestMetrics.values());
+  };
+
+  // Calcular estatísticas usando as métricas mais recentes
+  const latestMetrics = getLatestMetricsByChannel();
+  const liveChannels = latestMetrics.filter(m => m.is_live);
+  const totalViewers = liveChannels.reduce((sum, m) => sum + m.viewers_count, 0);
 
   const chartData = metrics
     .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
@@ -218,8 +237,8 @@ const GroupDetails = () => {
 
       <GroupStats
         totalChannels={channels.length}
-        liveChannels={metrics.filter((m) => m.is_live).length}
-        totalViewers={metrics.reduce((sum, m) => sum + m.viewers_count, 0)}
+        liveChannels={liveChannels.length}
+        totalViewers={totalViewers}
       />
 
       <ViewersChart 

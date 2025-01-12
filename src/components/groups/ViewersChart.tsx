@@ -64,17 +64,33 @@ export function ViewersChart({ data, channels }: ViewersChartProps) {
     return null;
   };
 
-  // Gerar cores únicas para cada canal
+  // Novas cores para o gráfico
   const colors = [
-    "#8884d8", "#82ca9d", "#ffc658", "#ff7300", "#a4de6c",
-    "#d0ed57", "#83a6ed", "#8dd1e1", "#a4de6c", "#d0ed57"
+    "#9b87f5", // Primary Purple
+    "#7E69AB", // Secondary Purple
+    "#6E59A5", // Tertiary Purple
+    "#8B5CF6", // Vivid Purple
+    "#1EAEDB", // Bright Blue
+    "#33C3F0", // Sky Blue
   ];
+
+  // Dados placeholder para quando não houver dados
+  const placeholderData = Array.from({ length: 10 }).map((_, index) => ({
+    timestamp: new Date(Date.now() - (9 - index) * 1000 * 60).toISOString(),
+    total: 0,
+    ...channels.reduce((acc, channel, idx) => ({
+      ...acc,
+      [channel.channel_name]: 0
+    }), {})
+  }));
+
+  const finalChartData = chartData.length > 0 ? chartData : placeholderData;
 
   return (
     <div className="h-[400px] w-full">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart
-          data={chartData}
+          data={finalChartData}
           margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
         >
           <XAxis
@@ -91,7 +107,7 @@ export function ViewersChart({ data, channels }: ViewersChartProps) {
           <Line
             type="monotone"
             dataKey="total"
-            stroke="#000000"
+            stroke="#E5DEFF"
             strokeWidth={2}
             dot={false}
             name="Total"
