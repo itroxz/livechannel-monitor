@@ -1,4 +1,4 @@
-import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend } from "recharts";
+import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip } from "recharts";
 
 interface ViewerData {
   timestamp: string;
@@ -14,7 +14,7 @@ interface ViewersChartProps {
   }>;
 }
 
-export function ViewersChart({ data, channels }: ViewersChartProps) {
+export function ViewersChart({ data }: ViewersChartProps) {
   // Processar os dados para o gráfico
   const processedData = data.reduce((acc, curr) => {
     const timestamp = curr.timestamp;
@@ -24,12 +24,7 @@ export function ViewersChart({ data, channels }: ViewersChartProps) {
         total: 0,
       };
     }
-    
-    acc[timestamp][curr.channelName] = curr.viewers;
-    acc[timestamp].total = Object.values(acc[timestamp])
-      .filter((value): value is number => typeof value === 'number' && value !== acc[timestamp].total)
-      .reduce((sum, value) => sum + value, 0);
-    
+    acc[timestamp].total += curr.viewers;
     return acc;
   }, {} as Record<string, any>);
 
@@ -37,7 +32,13 @@ export function ViewersChart({ data, channels }: ViewersChartProps) {
   const chartData = Object.values(processedData)
     .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
-  console.log("Dados processados para o gráfico:", chartData);
+  // Dados placeholder para quando não houver dados
+  const placeholderData = Array.from({ length: 10 }).map((_, index) => ({
+    timestamp: new Date(Date.now() - (9 - index) * 1000 * 60).toISOString(),
+    total: 0
+  }));
+
+  const finalChartData = chartData.length > 0 ? chartData : placeholderData;
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length > 0) {
@@ -46,45 +47,14 @@ export function ViewersChart({ data, channels }: ViewersChartProps) {
           <p className="font-medium mb-2">
             {new Date(label).toLocaleTimeString()}
           </p>
-          <p className="font-medium text-lg mb-2">
-            Total: {payload.find((p: any) => p.dataKey === 'total')?.value.toLocaleString() || 0} viewers
+          <p className="font-medium text-lg">
+            Total: {payload[0].value.toLocaleString()} viewers
           </p>
-          <div className="space-y-1">
-            {payload
-              .filter((entry: any) => entry.dataKey !== 'total')
-              .map((entry: any) => (
-                <p key={entry.dataKey} className="text-sm">
-                  {entry.dataKey}: {entry.value?.toLocaleString() || 0} viewers
-                </p>
-              ))}
-          </div>
         </div>
       );
     }
     return null;
   };
-
-  // Novas cores para o gráfico
-  const colors = [
-    "#9b87f5", // Primary Purple
-    "#7E69AB", // Secondary Purple
-    "#6E59A5", // Tertiary Purple
-    "#8B5CF6", // Vivid Purple
-    "#1EAEDB", // Bright Blue
-    "#33C3F0", // Sky Blue
-  ];
-
-  // Dados placeholder para quando não houver dados
-  const placeholderData = Array.from({ length: 10 }).map((_, index) => ({
-    timestamp: new Date(Date.now() - (9 - index) * 1000 * 60).toISOString(),
-    total: 0,
-    ...channels.reduce((acc, channel, idx) => ({
-      ...acc,
-      [channel.channel_name]: 0
-    }), {})
-  }));
-
-  const finalChartData = chartData.length > 0 ? chartData : placeholderData;
 
   return (
     <div className="h-[400px] w-full">
@@ -103,24 +73,14 @@ export function ViewersChart({ data, channels }: ViewersChartProps) {
             tickFormatter={(value) => value.toLocaleString()}
           />
           <Tooltip content={<CustomTooltip />} />
-          <Legend />
           <Line
             type="monotone"
             dataKey="total"
-            stroke="#E5DEFF"
+            stroke="#9b87f5"
             strokeWidth={2}
             dot={false}
-            name="Total"
+            name="Total Viewers"
           />
-          {channels.map((channel, index) => (
-            <Line
-              key={channel.id}
-              type="monotone"
-              dataKey={channel.channel_name}
-              stroke={colors[index % colors.length]}
-              dot={false}
-            />
-          ))}
         </LineChart>
       </ResponsiveContainer>
     </div>
