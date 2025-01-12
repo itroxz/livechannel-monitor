@@ -30,13 +30,15 @@ import {
 import { toast } from "sonner";
 
 const GroupDetails = () => {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   const { data: group } = useQuery({
     queryKey: ["group", id],
     queryFn: async () => {
+      if (!id) throw new Error("No group ID provided");
+      
       const { data, error } = await supabase
         .from("groups")
         .select("*")
@@ -46,11 +48,14 @@ const GroupDetails = () => {
       if (error) throw error;
       return data;
     },
+    enabled: !!id,
   });
 
   const { data: channels = [] } = useQuery({
     queryKey: ["group-channels", id],
     queryFn: async () => {
+      if (!id) throw new Error("No group ID provided");
+
       const { data, error } = await supabase
         .from("channels")
         .select("*")
@@ -59,6 +64,7 @@ const GroupDetails = () => {
       if (error) throw error;
       return data;
     },
+    enabled: !!id,
   });
 
   const { data: metrics = [] } = useQuery({
@@ -83,6 +89,8 @@ const GroupDetails = () => {
 
   // Configurar real-time updates para canais
   useEffect(() => {
+    if (!id) return;
+
     const channel = supabase
       .channel('group-changes')
       .on(
@@ -105,6 +113,8 @@ const GroupDetails = () => {
   }, [id, queryClient]);
 
   const handleDeleteGroup = async () => {
+    if (!id) return;
+
     try {
       const { error } = await supabase.from("groups").delete().eq("id", id);
       if (error) throw error;
@@ -208,8 +218,8 @@ const GroupDetails = () => {
 
       <GroupStats
         totalChannels={channels.length}
-        liveChannels={chartData.filter((m) => m.viewers > 0).length}
-        totalViewers={chartData.reduce((sum, m) => sum + m.viewers, 0)}
+        liveChannels={metrics.filter((m) => m.is_live).length}
+        totalViewers={metrics.reduce((sum, m) => sum + m.viewers_count, 0)}
       />
 
       <ViewersChart 
