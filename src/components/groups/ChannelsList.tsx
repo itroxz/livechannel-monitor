@@ -29,11 +29,17 @@ interface ChannelsListProps {
 }
 
 export function ChannelsList({ channels, groupId, onDeleteChannel }: ChannelsListProps) {
-  const { getLatestMetrics } = useMetrics();
-  const latestMetrics = getLatestMetrics();
+  const { metrics } = useMetrics();
 
-  console.log("Channels:", channels); // Added for debugging
-  console.log("Latest metrics in ChannelsList:", latestMetrics); // Added for debugging
+  console.log("Todos os metrics:", metrics); // Debug log
+
+  const getChannelLatestMetric = (channelId: string) => {
+    const channelMetrics = metrics
+      .filter(metric => metric.channel_id === channelId)
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+    return channelMetrics[0];
+  };
 
   return (
     <Card>
@@ -43,14 +49,11 @@ export function ChannelsList({ channels, groupId, onDeleteChannel }: ChannelsLis
       <CardContent>
         <div className="grid gap-4">
           {channels.map((channel) => {
-            const channelMetrics = latestMetrics.find(
-              (metric) => metric.channel_id === channel.id
-            );
+            const latestMetric = getChannelLatestMetric(channel.id);
+            console.log(`Canal ${channel.channel_name} métricas:`, latestMetric); // Debug log
 
-            console.log(`Channel ${channel.channel_name} metrics:`, channelMetrics); // Added for debugging
-
-            const isLive = channelMetrics?.is_live ?? false;
-            const viewersCount = channelMetrics?.viewers_count ?? 0;
+            const isLive = latestMetric?.is_live ?? false;
+            const viewersCount = latestMetric?.viewers_count ?? 0;
 
             return (
               <div
