@@ -10,7 +10,6 @@ async function fetchYouTubeMetrics(channel: any, YOUTUBE_API_KEY: string) {
   console.log(`[${new Date().toISOString()}] Starting metrics fetch for channel: ${channel.channel_name}`);
   
   try {
-    // 1. Get channel ID directly from channel name/handle
     let channelId = channel.channel_name;
     if (channel.channel_name.startsWith('@')) {
       const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${encodeURIComponent(channel.channel_name)}&key=${YOUTUBE_API_KEY}`;
@@ -23,33 +22,30 @@ async function fetchYouTubeMetrics(channel: any, YOUTUBE_API_KEY: string) {
         }
       });
 
+      const errorData = await searchResponse.json();
+      
       if (!searchResponse.ok) {
-        const errorData = await searchResponse.json();
-        console.error('Channel search error:', JSON.stringify(errorData, null, 2));
-        
-        // Check for API not enabled error
+        // Check specifically for API not enabled error
         if (errorData.error?.status === "PERMISSION_DENIED" && 
             errorData.error?.message?.includes("API") && 
             errorData.error?.message?.includes("disabled")) {
-          throw new Error("YouTube API is not enabled. Please enable it in the Google Cloud Console and try again.");
+          console.error('YouTube API is not enabled:', errorData.error);
+          throw new Error("YouTube API is not enabled. Please enable it in the Google Cloud Console at: " + 
+            errorData.error?.details?.[0]?.metadata?.activationUrl || 
+            "https://console.developers.google.com/apis/api/youtube.googleapis.com/overview");
         }
         
-        throw new Error(`Failed to search channel: ${JSON.stringify(errorData, null, 2)}`);
+        throw new Error(`Failed to search channel: ${JSON.stringify(errorData)}`);
       }
       
-      const searchData = await searchResponse.json();
-      console.log('Channel search response:', searchData);
-      
-      if (!searchData.items?.length) {
+      if (!errorData.items?.length) {
         console.log(`No channel found for ${channel.channel_name}`);
         return { isLive: false, viewersCount: 0 };
       }
       
-      channelId = searchData.items[0].id.channelId;
+      channelId = errorData.items[0].id.channelId;
     }
 
-    console.log(`Using channel ID for ${channel.channel_name}:`, channelId);
-    
     // 2. Check if channel is streaming using search endpoint with eventType=live
     const liveUrl = `https://www.googleapis.com/youtube/v3/search?part=id,snippet&channelId=${channelId}&eventType=live&type=video&key=${YOUTUBE_API_KEY}`;
     console.log('Checking for live streams:', liveUrl);
@@ -107,7 +103,15 @@ async function fetchYouTubeMetrics(channel: any, YOUTUBE_API_KEY: string) {
     console.log(`Channel ${channel.channel_name} has ${viewersCount} viewers`);
     return { isLive: true, viewersCount };
   } catch (error) {
-    console.error(`Error fetching metrics for channel ${channel.channel_name}:`, error);
+    console.error(`Error processing channel ${channel.channel_name}:`, error);
+    
+    // Check if the error is about API being disabled
+    if (error instanceof Error && 
+        error.message.includes("YouTube API is not enabled")) {
+      // Rethrow the user-friendly error message
+      throw error;
+    }
+    
     throw error;
   }
 }
@@ -121,21 +125,12 @@ serve(async (req) => {
 
   try {
     const YOUTUBE_API_KEY = Deno.env.get('YOUTUBE_API_KEY');
-    const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
-    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-
-    if (!YOUTUBE_API_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-      console.error('Missing required environment variables:', {
-        hasYoutubeKey: !!YOUTUBE_API_KEY,
-        hasSupabaseUrl: !!SUPABASE_URL,
-        hasServiceKey: !!SUPABASE_SERVICE_ROLE_KEY
-      });
-      throw new Error('Missing required environment variables');
+    if (!YOUTUBE_API_KEY) {
+      throw new Error('Missing YOUTUBE_API_KEY environment variable');
     }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    
     console.log('Fetching YouTube channels from database...');
+    const supabase = createClient(Deno.env.get('SUPABASE_URL'), Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'));
     const { data: channels, error: channelsError } = await supabase
       .from('channels')
       .select('*')
@@ -201,12 +196,24 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in fetch-youtube-metrics function:', error);
+    
+    // Create a more user-friendly error response
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const isApiDisabled = errorMessage.includes("YouTube API is not enabled");
+    
     return new Response(
       JSON.stringify({ 
-        error: error instanceof Error ? error.message : String(error),
+        error: isApiDisabled ? {
+          message: "YouTube API is not enabled",
+          details: "Please enable the YouTube Data API v3 in the Google Cloud Console and wait a few minutes for the changes to propagate.",
+          activationUrl: "https://console.developers.google.com/apis/api/youtube.googleapis.com/overview"
+        } : errorMessage,
         timestamp: new Date().toISOString()
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
+        status: isApiDisabled ? 503 : 500 
+      }
     );
   }
 });
