@@ -16,6 +16,7 @@ export type Database = {
           created_at: string
           group_id: string | null
           id: string
+          peak_viewers_count: number
           platform: string
         }
         Insert: {
@@ -24,6 +25,7 @@ export type Database = {
           created_at?: string
           group_id?: string | null
           id?: string
+          peak_viewers_count?: number
           platform: string
         }
         Update: {
@@ -32,6 +34,7 @@ export type Database = {
           created_at?: string
           group_id?: string | null
           id?: string
+          peak_viewers_count?: number
           platform?: string
         }
         Relationships: [
@@ -67,7 +70,6 @@ export type Database = {
           channel_id: string | null
           id: string
           is_live: boolean
-          peak_viewers_count: number
           timestamp: string
           viewers_count: number
         }
@@ -75,7 +77,6 @@ export type Database = {
           channel_id?: string | null
           id?: string
           is_live?: boolean
-          peak_viewers_count?: number
           timestamp?: string
           viewers_count?: number
         }
@@ -83,7 +84,6 @@ export type Database = {
           channel_id?: string | null
           id?: string
           is_live?: boolean
-          peak_viewers_count?: number
           timestamp?: string
           viewers_count?: number
         }
