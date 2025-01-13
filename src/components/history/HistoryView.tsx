@@ -145,17 +145,24 @@ export function HistoryView() {
     <div className="space-y-8">
       <Card>
         <CardHeader>
-          <div className="flex justify-between items-center">
-            <CardTitle className="flex items-center gap-2">
-              <ChartLineIcon className="h-4 w-4" />
-              Histórico de Viewers
-            </CardTitle>
-            <div className="flex gap-4">
+          <div className="flex flex-col space-y-4">
+            <div className="flex justify-between items-center">
+              <CardTitle className="flex items-center gap-2">
+                <ChartLineIcon className="h-4 w-4" />
+                Histórico de Viewers
+              </CardTitle>
+              <Button onClick={exportToExcel} variant="outline" size="sm">
+                <Download className="h-4 w-4 mr-2" />
+                Exportar Excel
+              </Button>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <Select
                 value={selectedGroupId || "all"}
                 onValueChange={(value) => setSelectedGroupId(value === "all" ? null : value)}
               >
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger>
                   <SelectValue placeholder="Todos os grupos" />
                 </SelectTrigger>
                 <SelectContent>
@@ -171,9 +178,9 @@ export function HistoryView() {
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
-                    variant={"outline"}
+                    variant="outline"
                     className={cn(
-                      "w-[240px] justify-start text-left font-normal",
+                      "justify-start text-left font-normal",
                       !selectedDate && "text-muted-foreground"
                     )}
                   >
@@ -201,7 +208,7 @@ export function HistoryView() {
                   onChange={(e) => setStartTime(e.target.value)}
                   className="w-32"
                 />
-                <span>até</span>
+                <span className="px-2">até</span>
                 <Input
                   type="time"
                   value={endTime}
@@ -209,43 +216,43 @@ export function HistoryView() {
                   className="w-32"
                 />
               </div>
+            </div>
 
-              <div className="flex gap-2">
-                <Button 
-                  variant={selectedRange === "30min" ? "default" : "outline"}
-                  onClick={() => setSelectedRange("30min")}
-                >
-                  30 minutos
-                </Button>
-                <Button 
-                  variant={selectedRange === "1h" ? "default" : "outline"}
-                  onClick={() => setSelectedRange("1h")}
-                >
-                  1 hora
-                </Button>
-                <Button 
-                  variant={selectedRange === "5h" ? "default" : "outline"}
-                  onClick={() => setSelectedRange("5h")}
-                >
-                  5 horas
-                </Button>
-                <Button 
-                  variant={selectedRange === "1d" ? "default" : "outline"}
-                  onClick={() => setSelectedRange("1d")}
-                >
-                  1 dia
-                </Button>
-                <Button 
-                  variant={selectedRange === "custom" ? "default" : "outline"}
-                  onClick={() => setSelectedRange("custom")}
-                >
-                  Personalizado
-                </Button>
-              </div>
-
-              <Button onClick={exportToExcel} variant="outline">
-                <Download className="h-4 w-4 mr-2" />
-                Exportar Excel
+            <div className="flex flex-wrap gap-2">
+              <Button 
+                size="sm"
+                variant={selectedRange === "30min" ? "default" : "outline"}
+                onClick={() => setSelectedRange("30min")}
+              >
+                30 minutos
+              </Button>
+              <Button 
+                size="sm"
+                variant={selectedRange === "1h" ? "default" : "outline"}
+                onClick={() => setSelectedRange("1h")}
+              >
+                1 hora
+              </Button>
+              <Button 
+                size="sm"
+                variant={selectedRange === "5h" ? "default" : "outline"}
+                onClick={() => setSelectedRange("5h")}
+              >
+                5 horas
+              </Button>
+              <Button 
+                size="sm"
+                variant={selectedRange === "1d" ? "default" : "outline"}
+                onClick={() => setSelectedRange("1d")}
+              >
+                1 dia
+              </Button>
+              <Button 
+                size="sm"
+                variant={selectedRange === "custom" ? "default" : "outline"}
+                onClick={() => setSelectedRange("custom")}
+              >
+                Personalizado
               </Button>
             </div>
           </div>
