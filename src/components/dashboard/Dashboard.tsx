@@ -71,7 +71,7 @@ export function Dashboard() {
       </div>
 
       <div>
-        <h2 className="text-2xl font-bold mb-4 bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">Grupos</h2>
+        <h2 className="text-2xl font-bold mb-4 bg-gradient-to-r from-[#0EA5E9] to-blue-500 bg-clip-text text-transparent">Grupos</h2>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {groups.map((group) => {
             const stats = getGroupStats(group.id);
