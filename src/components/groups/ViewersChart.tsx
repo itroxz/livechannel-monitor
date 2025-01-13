@@ -18,7 +18,7 @@ interface ViewersChartProps {
     viewers: number;
     channelName: string;
   }>;
-  timeRange?: number; // em horas
+  timeRange?: number;
 }
 
 type CustomTooltipProps = TooltipProps<number, string> & {
@@ -35,14 +35,12 @@ type CustomTooltipProps = TooltipProps<number, string> & {
 };
 
 export function ViewersChart({ data, timeRange = 1 }: ViewersChartProps) {
-  // Filtrar dados pelo intervalo de tempo
   const filterDataByTimeRange = () => {
     const now = new Date();
     const cutoffTime = new Date(now.getTime() - timeRange * 60 * 60 * 1000);
     return data.filter(item => new Date(item.timestamp) > cutoffTime);
   };
 
-  // Agregar dados por minuto e por canal
   const aggregateData = () => {
     const filteredData = filterDataByTimeRange();
     console.log("Filtered data:", filteredData);
@@ -96,7 +94,7 @@ export function ViewersChart({ data, timeRange = 1 }: ViewersChartProps) {
           <div className="mt-2 space-y-1">
             {Object.entries(data.channels).map(([channel, viewers]) => (
               <p key={channel} className="text-sm">
-                {channel}: {viewers} viewers
+                {channel}: {viewers.toString()} viewers
               </p>
             ))}
           </div>
