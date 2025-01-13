@@ -45,6 +45,8 @@ export function ViewersChart({ data, timeRange = 1 }: ViewersChartProps) {
   // Agregar dados por minuto e por canal
   const aggregateData = () => {
     const filteredData = filterDataByTimeRange();
+    console.log("Filtered data:", filteredData);
+    
     const aggregatedByMinute: Record<string, { 
       timestamp: string;
       totalViewers: number;
@@ -66,9 +68,12 @@ export function ViewersChart({ data, timeRange = 1 }: ViewersChartProps) {
       aggregatedByMinute[minute].totalViewers = Object.values(aggregatedByMinute[minute].channels).reduce((a, b) => a + b, 0);
     });
 
-    return Object.values(aggregatedByMinute).sort((a, b) => 
+    const sortedData = Object.values(aggregatedByMinute).sort((a, b) => 
       new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     );
+    
+    console.log("Aggregated data:", sortedData);
+    return sortedData;
   };
 
   const chartData = aggregateData();
@@ -86,7 +91,7 @@ export function ViewersChart({ data, timeRange = 1 }: ViewersChartProps) {
       const data = payload[0].payload;
       return (
         <div className="bg-background border rounded-lg p-3 shadow-lg">
-          <p className="font-medium">{format(parseISO(label), "HH:mm")}</p>
+          <p className="font-medium">{format(parseISO(label || ''), "HH:mm")}</p>
           <p className="text-sm text-muted-foreground mt-1">Total: {data.totalViewers} viewers</p>
           <div className="mt-2 space-y-1">
             {Object.entries(data.channels).map(([channel, viewers]) => (
