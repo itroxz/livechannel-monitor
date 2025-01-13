@@ -28,6 +28,8 @@ async function fetchYouTubeChannelData(channelNames: string[], apiKey: string) {
         }
 
         const searchData = await searchResponse.json();
+        console.log('Search response:', searchData);
+        
         const channelId = searchData.items?.[0]?.id?.channelId;
         
         if (!channelId) {
@@ -37,7 +39,7 @@ async function fetchYouTubeChannelData(channelNames: string[], apiKey: string) {
 
         console.log(`Found channel ID for ${cleanChannelName}:`, channelId);
 
-        // Get channel's live broadcasts
+        // Get channel's live broadcasts using search endpoint
         const videosResponse = await fetch(
           `https://www.googleapis.com/youtube/v3/search?part=id,snippet&channelId=${channelId}&eventType=live&type=video&key=${apiKey}`
         );
@@ -51,9 +53,10 @@ async function fetchYouTubeChannelData(channelNames: string[], apiKey: string) {
         console.log(`Live stream search results for ${cleanChannelName}:`, videosData);
 
         const liveVideoId = videosData.items?.[0]?.id?.videoId;
-        const isLive = !!liveVideoId;
-
-        if (isLive) {
+        
+        if (liveVideoId) {
+          console.log(`Found live video ID for ${cleanChannelName}:`, liveVideoId);
+          
           // Get live stream statistics
           const videoStatsResponse = await fetch(
             `https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails,statistics&id=${liveVideoId}&key=${apiKey}`
@@ -85,13 +88,13 @@ async function fetchYouTubeChannelData(channelNames: string[], apiKey: string) {
             viewers: viewerCount
           });
         } else {
+          console.log(`Channel ${cleanChannelName} is not live`);
           results.push({
             channelName,
             channelId,
             isLive: false,
             viewers: 0
           });
-          console.log(`Channel ${cleanChannelName} is not live`);
         }
       } catch (error) {
         console.error(`Error processing channel ${channelName}:`, error);
@@ -151,7 +154,7 @@ serve(async (req) => {
           continue;
         }
 
-        // Get current peak viewers
+        // Get current peak viewers for this channel
         const { data: currentMetrics, error: metricsError } = await supabase
           .from('metrics')
           .select('peak_viewers_count')
@@ -164,8 +167,9 @@ serve(async (req) => {
           continue;
         }
 
+        // Determine the new peak viewers count
         const currentPeak = currentMetrics?.[0]?.peak_viewers_count || 0;
-        const newPeak = Math.max(currentPeak, data.viewers);
+        const newPeak = data.viewers > currentPeak ? data.viewers : currentPeak;
 
         console.log(`Updating metrics for channel ${data.channelName}:`, {
           channelId: channel.id,
