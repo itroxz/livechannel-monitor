@@ -9,6 +9,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { ViewersChart } from "@/components/groups/ViewersChart";
 
 interface Channel {
   id: string;
@@ -97,6 +98,15 @@ export function HistoryView() {
     enabled: channels.length > 0,
   });
 
+  const chartData = metrics.map((metric) => {
+    const channel = channels.find((c) => c.id === metric.channel_id);
+    return {
+      timestamp: metric.timestamp,
+      viewers: metric.viewers_count,
+      channelName: channel?.channel_name || "Desconhecido",
+    };
+  });
+
   return (
     <div className="space-y-8">
       <Card>
@@ -180,9 +190,7 @@ export function HistoryView() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex justify-center items-center h-[400px] text-muted-foreground">
-            Histórico de visualizações removido
-          </div>
+          <ViewersChart data={chartData} />
         </CardContent>
       </Card>
     </div>
