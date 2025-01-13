@@ -67,6 +67,7 @@ export type Database = {
           channel_id: string | null
           id: string
           is_live: boolean
+          peak_viewers_count: number
           timestamp: string
           viewers_count: number
         }
@@ -74,6 +75,7 @@ export type Database = {
           channel_id?: string | null
           id?: string
           is_live?: boolean
+          peak_viewers_count?: number
           timestamp?: string
           viewers_count?: number
         }
@@ -81,6 +83,7 @@ export type Database = {
           channel_id?: string | null
           id?: string
           is_live?: boolean
+          peak_viewers_count?: number
           timestamp?: string
           viewers_count?: number
         }

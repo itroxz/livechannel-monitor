@@ -12,9 +12,15 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { ChannelFormDialog } from "@/components/groups/ChannelFormDialog";
-import { Users, Pen, Trash } from "lucide-react";
+import { Users, Pen, Trash, TrendingUp } from "lucide-react";
 import { useMetrics } from "@/hooks/useMetrics";
 import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface Channel {
   id: string;
@@ -60,6 +66,7 @@ export function ChannelsList({ channels, groupId, onDeleteChannel }: ChannelsLis
 
             const isLive = latestMetric?.is_live ?? false;
             const viewersCount = latestMetric?.viewers_count ?? 0;
+            const peakViewersCount = latestMetric?.peak_viewers_count ?? 0;
 
             return (
               <div
@@ -73,9 +80,24 @@ export function ChannelsList({ channels, groupId, onDeleteChannel }: ChannelsLis
                     {channel.platform}
                   </span>
                   {isLive ? (
-                    <Badge variant="default" className="bg-green-500">
-                      {viewersCount} assistindo
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="default" className="bg-green-500">
+                        {viewersCount} assistindo
+                      </Badge>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <Badge variant="outline" className="flex items-center gap-1">
+                              <TrendingUp className="h-3 w-3" />
+                              {peakViewersCount}
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Pico de viewers</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
                   ) : (
                     <Badge variant="secondary">Offline</Badge>
                   )}
