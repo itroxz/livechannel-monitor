@@ -5,34 +5,12 @@ import { ChartLineIcon, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { format, subMinutes, subHours, subDays } from "date-fns";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
 import { ViewersChart } from "@/components/groups/ViewersChart";
 import * as XLSX from 'xlsx';
-import { Input } from "@/components/ui/input";
-
-interface Channel {
-  id: string;
-  channel_name: string;
-  group_id: string;
-}
-
-interface Group {
-  id: string;
-  name: string;
-}
-
-interface Metric {
-  channel_id: string;
-  viewers_count: number;
-  is_live: boolean;
-  timestamp: string;
-  peak_viewers_count: number;
-}
-
-type TimeRange = "30min" | "1h" | "5h" | "1d" | "custom";
+import { TimeRange, Channel, Metric } from "@/types/history";
+import { TimeRangeSelector } from "./TimeRangeSelector";
+import { GroupSelector } from "./GroupSelector";
+import { DateTimeSelector } from "./DateTimeSelector";
 
 export function HistoryView() {
   const [selectedRange, setSelectedRange] = useState<TimeRange>("1h");
@@ -68,15 +46,6 @@ export function HistoryView() {
     }
   };
 
-  const { data: groups = [] } = useQuery({
-    queryKey: ["groups"],
-    queryFn: async () => {
-      const { data, error } = await supabase.from("groups").select("*");
-      if (error) throw error;
-      return data as Group[];
-    },
-  });
-
   const { data: channels = [] } = useQuery({
     queryKey: ["channels", selectedGroupId],
     queryFn: async () => {
@@ -92,7 +61,7 @@ export function HistoryView() {
     },
   });
 
-  const { data: metrics = [], refetch } = useQuery({
+  const { data: metrics = [] } = useQuery({
     queryKey: ["metrics", selectedRange, selectedDate.toISOString(), selectedGroupId, startTime, endTime],
     queryFn: async () => {
       const { start, end } = getTimeRange();
@@ -157,104 +126,26 @@ export function HistoryView() {
               </Button>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <Select
-                value={selectedGroupId || "all"}
-                onValueChange={(value) => setSelectedGroupId(value === "all" ? null : value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Todos os grupos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos os grupos</SelectItem>
-                  {groups.map((group) => (
-                    <SelectItem key={group.id} value={group.id}>
-                      {group.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "justify-start text-left font-normal",
-                      !selectedDate && "text-muted-foreground"
-                    )}
-                  >
-                    {selectedDate ? (
-                      format(selectedDate, "PPP")
-                    ) : (
-                      <span>Selecione uma data</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={(date) => date && setSelectedDate(date)}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-
-              <div className="flex items-center gap-2">
-                <Input
-                  type="time"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                  className="w-32"
-                />
-                <span className="px-2">até</span>
-                <Input
-                  type="time"
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                  className="w-32"
-                />
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <GroupSelector 
+                selectedGroupId={selectedGroupId}
+                onGroupChange={setSelectedGroupId}
+              />
+              
+              <DateTimeSelector
+                selectedDate={selectedDate}
+                startTime={startTime}
+                endTime={endTime}
+                onDateChange={(date) => date && setSelectedDate(date)}
+                onStartTimeChange={setStartTime}
+                onEndTimeChange={setEndTime}
+              />
             </div>
 
-            <div className="flex flex-wrap gap-2">
-              <Button 
-                size="sm"
-                variant={selectedRange === "30min" ? "default" : "outline"}
-                onClick={() => setSelectedRange("30min")}
-              >
-                30 minutos
-              </Button>
-              <Button 
-                size="sm"
-                variant={selectedRange === "1h" ? "default" : "outline"}
-                onClick={() => setSelectedRange("1h")}
-              >
-                1 hora
-              </Button>
-              <Button 
-                size="sm"
-                variant={selectedRange === "5h" ? "default" : "outline"}
-                onClick={() => setSelectedRange("5h")}
-              >
-                5 horas
-              </Button>
-              <Button 
-                size="sm"
-                variant={selectedRange === "1d" ? "default" : "outline"}
-                onClick={() => setSelectedRange("1d")}
-              >
-                1 dia
-              </Button>
-              <Button 
-                size="sm"
-                variant={selectedRange === "custom" ? "default" : "outline"}
-                onClick={() => setSelectedRange("custom")}
-              >
-                Personalizado
-              </Button>
-            </div>
+            <TimeRangeSelector
+              selectedRange={selectedRange}
+              onRangeChange={setSelectedRange}
+            />
           </div>
         </CardHeader>
         <CardContent>
