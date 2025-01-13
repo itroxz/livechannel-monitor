@@ -6,22 +6,60 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-async function fetchYouTubeData(videoIds: string[], apiKey: string) {
+async function fetchYouTubeChannelData(channelNames: string[], apiKey: string) {
   try {
-    console.log('Fetching YouTube data for videos:', videoIds);
-    const response = await fetch(
-      `https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails&id=${videoIds.join(',')}&key=${apiKey}`
+    console.log('Fetching YouTube data for channels:', channelNames);
+    
+    // Primeiro, buscar os IDs dos canais
+    const channelResponse = await fetch(
+      `https://www.googleapis.com/youtube/v3/channels?part=contentDetails&forUsername=${channelNames.join(',')}&key=${apiKey}`
     );
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('YouTube API error:', errorText);
-      throw new Error('Failed to fetch YouTube data');
+    if (!channelResponse.ok) {
+      const errorText = await channelResponse.text();
+      console.error('YouTube API error (channels):', errorText);
+      throw new Error('Failed to fetch YouTube channel data');
     }
 
-    const data = await response.json();
-    console.log('YouTube API response:', data);
-    return data;
+    const channelData = await channelResponse.json();
+    console.log('YouTube API channel response:', channelData);
+
+    // Para cada canal, verificar se há uma transmissão ao vivo
+    const liveStreams = [];
+    for (const channel of channelData.items || []) {
+      const uploadsPlaylistId = channel.contentDetails?.relatedPlaylists?.uploads;
+      if (uploadsPlaylistId) {
+        // Buscar os últimos vídeos do canal
+        const playlistResponse = await fetch(
+          `https://www.googleapis.com/youtube/v3/playlistItems?part=contentDetails&playlistId=${uploadsPlaylistId}&maxResults=1&key=${apiKey}`
+        );
+        
+        if (!playlistResponse.ok) continue;
+        
+        const playlistData = await playlistResponse.json();
+        const latestVideoId = playlistData.items?.[0]?.contentDetails?.videoId;
+        
+        if (latestVideoId) {
+          // Verificar se o último vídeo é uma live
+          const videoResponse = await fetch(
+            `https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails&id=${latestVideoId}&key=${apiKey}`
+          );
+          
+          if (!videoResponse.ok) continue;
+          
+          const videoData = await videoResponse.json();
+          if (videoData.items?.[0]?.liveStreamingDetails?.concurrentViewers) {
+            liveStreams.push({
+              channelId: channel.id,
+              videoId: latestVideoId,
+              viewers: parseInt(videoData.items[0].liveStreamingDetails.concurrentViewers)
+            });
+          }
+        }
+      }
+    }
+
+    return liveStreams;
   } catch (error) {
     console.error('Error fetching YouTube data:', error);
     throw error;
@@ -62,32 +100,46 @@ serve(async (req) => {
     const batchSize = 50;
     for (let i = 0; i < channels.length; i += batchSize) {
       const batchChannels = channels.slice(i, i + batchSize);
-      const videoIds = batchChannels.map(channel => channel.channel_id);
+      const channelNames = batchChannels.map(channel => channel.channel_name);
 
       try {
-        const youtubeData = await fetchYouTubeData(videoIds, YOUTUBE_API_KEY);
+        const youtubeData = await fetchYouTubeChannelData(channelNames, YOUTUBE_API_KEY);
         
-        // Process each video in the response
-        for (const video of youtubeData.items) {
-          const channel = channels.find(c => c.channel_id === video.id);
+        // Process each live stream
+        for (const stream of youtubeData) {
+          const channel = channels.find(c => c.channel_id === stream.channelId);
           if (!channel) continue;
-
-          const viewersCount = parseInt(video.liveStreamingDetails?.concurrentViewers || '0');
-          const isLive = !!video.liveStreamingDetails?.concurrentViewers;
 
           // Insert metrics into the database
           const { error: insertError } = await supabase
             .from('metrics')
             .insert({
               channel_id: channel.id,
-              viewers_count: viewersCount,
-              is_live: isLive,
+              viewers_count: stream.viewers,
+              is_live: true,
             });
 
           if (insertError) {
             console.error(`Error inserting metrics for channel ${channel.channel_name}:`, insertError);
           } else {
             console.log(`Successfully updated metrics for channel ${channel.channel_name}`);
+          }
+        }
+
+        // Update offline status for channels not in youtubeData
+        for (const channel of batchChannels) {
+          if (!youtubeData.find(stream => stream.channelId === channel.channel_id)) {
+            const { error: insertError } = await supabase
+              .from('metrics')
+              .insert({
+                channel_id: channel.id,
+                viewers_count: 0,
+                is_live: false,
+              });
+
+            if (insertError) {
+              console.error(`Error inserting offline metrics for channel ${channel.channel_name}:`, insertError);
+            }
           }
         }
       } catch (error) {
