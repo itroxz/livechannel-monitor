@@ -40,6 +40,7 @@ export function ChannelsList({ channels, groupId, onDeleteChannel }: ChannelsLis
       .filter(metric => metric.channel_id === channelId)
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
+    console.log(`Métricas para o canal ${channelId}:`, channelMetrics);
     return channelMetrics[0];
   };
 
@@ -54,7 +55,6 @@ export function ChannelsList({ channels, groupId, onDeleteChannel }: ChannelsLis
             const latestMetric = getChannelLatestMetric(channel.id);
             console.log(`Canal ${channel.channel_name} métricas:`, latestMetric);
             console.log(`Canal ${channel.channel_name} ID:`, channel.id);
-            console.log(`Canal ${channel.channel_name} Twitch ID:`, channel.channel_id);
 
             const isLive = latestMetric?.is_live ?? false;
             const viewersCount = latestMetric?.viewers_count ?? 0;
