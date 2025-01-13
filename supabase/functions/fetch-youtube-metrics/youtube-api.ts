@@ -29,6 +29,18 @@ export async function validateYouTubeChannel(channelName: string, apiKey: string
 }
 
 export async function fetchLiveStreamData(channelId: string, apiKey: string) {
+  const cacheKey = `live_${channelId}`;
+  const now = Date.now();
+  const cached = cache.get(cacheKey);
+
+  // Verificar cache
+  if (cached && (now - cached.timestamp) < CACHE_DURATION) {
+    console.log(`[${new Date().toISOString()}] Usando dados em cache para canal ${channelId}`);
+    console.log('Dados do cache:', cached.data);
+    return cached.data;
+  }
+
+  console.log(`[${new Date().toISOString()}] Cache expirado ou não encontrado para ${channelId}, buscando dados novos`);
   console.log(`[${new Date().toISOString()}] Buscando dados da live para canal ID: ${channelId}`);
   
   // Buscar todas as lives ativas do canal usando maxResults=50 para reduzir chamadas
@@ -45,11 +57,21 @@ export async function fetchLiveStreamData(channelId: string, apiKey: string) {
   
   if (!liveData.items?.length) {
     console.log(`[${new Date().toISOString()}] Nenhuma live encontrada para o canal ${channelId}`);
-    return { isLive: false, viewersCount: 0 };
+    const result = { isLive: false, viewersCount: 0 };
+    
+    // Armazenar no cache mesmo quando não há lives
+    cache.set(cacheKey, {
+      data: result,
+      timestamp: now
+    });
+    
+    return result;
   }
 
   // Otimização: Buscar estatísticas de múltiplos vídeos em uma única chamada
   const videoIds = liveData.items.map((item: any) => item.id.videoId).join(',');
+  console.log(`[${new Date().toISOString()}] IDs dos vídeos encontrados:`, videoIds);
+  
   const statsUrl = `https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails&id=${videoIds}&key=${apiKey}`;
   const statsResponse = await fetch(statsUrl);
   const statsData = await statsResponse.json();
@@ -68,10 +90,20 @@ export async function fetchLiveStreamData(channelId: string, apiKey: string) {
   
   console.log(`[${new Date().toISOString()}] Total de ${totalViewers} espectadores em ${statsData.items.length} lives simultâneas`);
   
-  return {
+  const result = {
     isLive: true,
     viewersCount: totalViewers
   };
+
+  // Armazenar resultado no cache
+  cache.set(cacheKey, {
+    data: result,
+    timestamp: now
+  });
+  
+  console.log(`[${new Date().toISOString()}] Dados armazenados no cache para ${channelId}:`, result);
+  
+  return result;
 }
 
 // Cache para armazenar resultados por 60 segundos
