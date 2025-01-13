@@ -1,3 +1,5 @@
+// ... keep existing code (imports and other functions)
+
 export async function validateYouTubeChannel(channelName: string, apiKey: string) {
   console.log(`[${new Date().toISOString()}] Validando canal do YouTube: ${channelName}`);
   
@@ -71,3 +73,7 @@ export async function fetchLiveStreamData(channelId: string, apiKey: string) {
     viewersCount: totalViewers
   };
 }
+
+// Cache para armazenar resultados por 60 segundos
+const cache = new Map<string, { data: any, timestamp: number }>();
+const CACHE_DURATION = 60000; // 60 segundos em milissegundos

@@ -79,7 +79,7 @@ export function HistoryView() {
       console.log("Fetched metrics:", data);
       return data as Metric[];
     },
-    refetchInterval: 30000,
+    refetchInterval: 60000, // Atualiza a cada 60 segundos
     enabled: channels.length > 0,
   });
 

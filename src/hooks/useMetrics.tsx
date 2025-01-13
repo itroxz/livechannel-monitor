@@ -15,7 +15,7 @@ export function useMetrics() {
       console.log("Dados brutos das métricas:", data);
       return data as Metric[];
     },
-    refetchInterval: 30000, // Atualiza a cada 30 segundos
+    refetchInterval: 60000, // Atualiza a cada 60 segundos
   });
 
   const getLatestMetrics = () => {
