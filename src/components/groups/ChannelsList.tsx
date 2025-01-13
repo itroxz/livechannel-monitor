@@ -21,6 +21,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { format } from "date-fns";
 
 interface Channel {
   id: string;
@@ -67,6 +68,7 @@ export function ChannelsList({ channels, groupId, onDeleteChannel }: ChannelsLis
             const isLive = latestMetric?.is_live ?? false;
             const viewersCount = latestMetric?.viewers_count ?? 0;
             const peakViewersCount = latestMetric?.peak_viewers_count ?? 0;
+            const peakDate = latestMetric?.timestamp ? format(new Date(latestMetric.timestamp), "dd/MM/yyyy HH:mm") : '';
 
             return (
               <div
@@ -93,7 +95,7 @@ export function ChannelsList({ channels, groupId, onDeleteChannel }: ChannelsLis
                             </Badge>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>Pico de viewers</p>
+                            <p>Pico de {peakViewersCount} viewers em {peakDate}</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
