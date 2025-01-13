@@ -36,12 +36,14 @@ export function ChannelsList({ channels, groupId, onDeleteChannel }: ChannelsLis
   console.log("Todos os canais:", channels);
 
   const getChannelLatestMetric = (channelId: string) => {
+    if (!metrics || metrics.length === 0) return null;
+
     const channelMetrics = metrics
       .filter(metric => metric.channel_id === channelId)
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
     console.log(`Métricas para o canal ${channelId}:`, channelMetrics);
-    return channelMetrics[0];
+    return channelMetrics.length > 0 ? channelMetrics[0] : null;
   };
 
   return (

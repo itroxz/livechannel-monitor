@@ -15,7 +15,8 @@ export function useMetrics() {
       const { data, error } = await supabase
         .from("metrics")
         .select("*")
-        .order("timestamp", { ascending: true });
+        .order("timestamp", { ascending: false });
+      
       if (error) throw error;
       console.log("Raw metrics data:", data);
       return data as Metric[];
