@@ -25,20 +25,20 @@ export function GroupCard({
       onClick={() => navigate(`/groups/${id}`)}
     >
       <CardHeader>
-        <CardTitle className="text-xl font-semibold bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent group-hover:from-purple-600 group-hover:to-primary transition-all duration-200">
+        <CardTitle className="text-xl font-semibold bg-gradient-to-r from-[#0EA5E9] to-blue-500 bg-clip-text text-transparent group-hover:from-blue-600 group-hover:to-[#0EA5E9] transition-all duration-200">
           {name}
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="grid gap-4">
           <div className="flex items-center gap-4">
-            <Users className="h-4 w-4 text-primary/80" />
+            <Users className="h-4 w-4 text-[#0EA5E9]/80" />
             <div className="text-sm text-muted-foreground">
               {totalChannels.toLocaleString('pt-BR')} canais ({liveChannels.toLocaleString('pt-BR')} ao vivo)
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <Eye className="h-4 w-4 text-primary/80" />
+            <Eye className="h-4 w-4 text-[#0EA5E9]/80" />
             <div className="text-sm text-muted-foreground">
               {totalViewers.toLocaleString('pt-BR')} espectadores
             </div>

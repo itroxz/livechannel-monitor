@@ -5,6 +5,14 @@ export async function validateYouTubeChannel(channelName: string, apiKey: string
   
   let channelId = channelName;
   if (channelName.startsWith('@')) {
+    const cacheKey = `channel_${channelName}`;
+    const cached = cache.get(cacheKey);
+    
+    if (cached && (Date.now() - cached.timestamp) < CACHE_DURATION * 2) {
+      console.log(`[${new Date().toISOString()}] Usando ID do canal em cache para ${channelName}`);
+      return cached.data;
+    }
+
     const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${encodeURIComponent(channelName)}&key=${apiKey}`;
     console.log(`[${new Date().toISOString()}] URL de busca do canal:`, searchUrl);
     
@@ -23,6 +31,12 @@ export async function validateYouTubeChannel(channelName: string, apiKey: string
     
     channelId = searchData.items[0].id.channelId;
     console.log(`[${new Date().toISOString()}] ID do canal encontrado:`, channelId);
+    
+    // Cache the channel ID for twice as long as metrics
+    cache.set(cacheKey, {
+      data: channelId,
+      timestamp: Date.now()
+    });
   }
   
   return channelId;
@@ -33,15 +47,17 @@ export async function fetchLiveStreamData(channelId: string, apiKey: string) {
   const now = Date.now();
   const cached = cache.get(cacheKey);
 
-  // Verificar cache
-  if (cached && (now - cached.timestamp) < CACHE_DURATION) {
-    console.log(`[${new Date().toISOString()}] Usando dados em cache para canal ${channelId}`);
-    console.log('Dados do cache:', cached.data);
-    return cached.data;
+  // Verificar cache com tempo de expiração dinâmico baseado no status da live
+  if (cached) {
+    const cacheDuration = cached.data.isLive ? CACHE_DURATION : CACHE_DURATION * 2;
+    if ((now - cached.timestamp) < cacheDuration) {
+      console.log(`[${new Date().toISOString()}] Usando dados em cache para canal ${channelId}`);
+      console.log('Dados do cache:', cached.data);
+      return cached.data;
+    }
   }
 
   console.log(`[${new Date().toISOString()}] Cache expirado ou não encontrado para ${channelId}, buscando dados novos`);
-  console.log(`[${new Date().toISOString()}] Buscando dados da live para canal ID: ${channelId}`);
   
   // Buscar todas as lives ativas do canal usando maxResults=50 para reduzir chamadas
   const liveUrl = `https://www.googleapis.com/youtube/v3/search?part=id&channelId=${channelId}&eventType=live&type=video&maxResults=50&key=${apiKey}`;
@@ -59,7 +75,7 @@ export async function fetchLiveStreamData(channelId: string, apiKey: string) {
     console.log(`[${new Date().toISOString()}] Nenhuma live encontrada para o canal ${channelId}`);
     const result = { isLive: false, viewersCount: 0 };
     
-    // Armazenar no cache mesmo quando não há lives
+    // Cache por mais tempo quando não está ao vivo
     cache.set(cacheKey, {
       data: result,
       timestamp: now
@@ -95,7 +111,7 @@ export async function fetchLiveStreamData(channelId: string, apiKey: string) {
     viewersCount: totalViewers
   };
 
-  // Armazenar resultado no cache
+  // Cache por menos tempo quando está ao vivo
   cache.set(cacheKey, {
     data: result,
     timestamp: now
@@ -106,6 +122,6 @@ export async function fetchLiveStreamData(channelId: string, apiKey: string) {
   return result;
 }
 
-// Cache para armazenar resultados por 60 segundos
+// Cache para armazenar resultados com duração variável
 const cache = new Map<string, { data: any, timestamp: number }>();
 const CACHE_DURATION = 60000; // 60 segundos em milissegundos
