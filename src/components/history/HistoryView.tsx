@@ -1,15 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChartLineIcon } from "lucide-react";
+import { ChartLineIcon, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
-import { addHours, addMinutes, subHours, subMinutes, subDays, format } from "date-fns";
+import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { ViewersChart } from "@/components/groups/ViewersChart";
+import * as XLSX from 'xlsx';
+import { Input } from "@/components/ui/input";
 
 interface Channel {
   id: string;
@@ -27,6 +29,7 @@ interface Metric {
   viewers_count: number;
   is_live: boolean;
   timestamp: string;
+  peak_viewers_count: number;
 }
 
 type TimeRange = "30min" | "1h" | "5h" | "1d" | "custom";
@@ -35,20 +38,33 @@ export function HistoryView() {
   const [selectedRange, setSelectedRange] = useState<TimeRange>("1h");
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
+  const [startTime, setStartTime] = useState("00:00");
+  const [endTime, setEndTime] = useState("23:59");
   
   const getTimeRange = () => {
     const baseDate = selectedDate;
+    const [startHour, startMinute] = startTime.split(":").map(Number);
+    const [endHour, endMinute] = endTime.split(":").map(Number);
+
+    if (selectedRange === "custom") {
+      const start = new Date(baseDate);
+      start.setHours(startHour, startMinute, 0);
+      const end = new Date(baseDate);
+      end.setHours(endHour, endMinute, 59);
+      return { start, end };
+    }
+
     switch (selectedRange) {
       case "30min":
-        return subMinutes(baseDate, 30);
+        return { start: subMinutes(baseDate, 30), end: baseDate };
       case "1h":
-        return subHours(baseDate, 1);
+        return { start: subHours(baseDate, 1), end: baseDate };
       case "5h":
-        return subHours(baseDate, 5);
+        return { start: subHours(baseDate, 5), end: baseDate };
       case "1d":
-        return subDays(baseDate, 1);
+        return { start: subDays(baseDate, 1), end: baseDate };
       default:
-        return subHours(baseDate, 1);
+        return { start: baseDate, end: baseDate };
     }
   };
 
@@ -77,17 +93,17 @@ export function HistoryView() {
   });
 
   const { data: metrics = [], refetch } = useQuery({
-    queryKey: ["metrics", selectedRange, selectedDate.toISOString(), selectedGroupId],
+    queryKey: ["metrics", selectedRange, selectedDate.toISOString(), selectedGroupId, startTime, endTime],
     queryFn: async () => {
-      const startTime = getTimeRange();
+      const { start, end } = getTimeRange();
       const channelIds = channels.map(c => c.id);
       
       const { data, error } = await supabase
         .from("metrics")
         .select("*")
         .in("channel_id", channelIds)
-        .gte("timestamp", startTime.toISOString())
-        .lte("timestamp", selectedDate.toISOString())
+        .gte("timestamp", start.toISOString())
+        .lte("timestamp", end.toISOString())
         .order("timestamp", { ascending: true });
       
       if (error) throw error;
@@ -106,6 +122,24 @@ export function HistoryView() {
       channelName: channel?.channel_name || "Desconhecido",
     };
   });
+
+  const exportToExcel = () => {
+    const exportData = metrics.map((metric) => {
+      const channel = channels.find((c) => c.id === metric.channel_id);
+      return {
+        Canal: channel?.channel_name || "Desconhecido",
+        "Data e Hora": format(new Date(metric.timestamp), "dd/MM/yyyy HH:mm:ss"),
+        "Viewers": metric.viewers_count,
+        "Pico de Viewers": metric.peak_viewers_count,
+        "Ao Vivo": metric.is_live ? "Sim" : "Não"
+      };
+    });
+
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Métricas");
+    XLSX.writeFile(wb, `metricas_${format(new Date(), "dd-MM-yyyy_HH-mm")}.xlsx`);
+  };
 
   return (
     <div className="space-y-8">
@@ -160,6 +194,22 @@ export function HistoryView() {
                 </PopoverContent>
               </Popover>
 
+              <div className="flex items-center gap-2">
+                <Input
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  className="w-32"
+                />
+                <span>até</span>
+                <Input
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  className="w-32"
+                />
+              </div>
+
               <div className="flex gap-2">
                 <Button 
                   variant={selectedRange === "30min" ? "default" : "outline"}
@@ -185,7 +235,18 @@ export function HistoryView() {
                 >
                   1 dia
                 </Button>
+                <Button 
+                  variant={selectedRange === "custom" ? "default" : "outline"}
+                  onClick={() => setSelectedRange("custom")}
+                >
+                  Personalizado
+                </Button>
               </div>
+
+              <Button onClick={exportToExcel} variant="outline">
+                <Download className="h-4 w-4 mr-2" />
+                Exportar Excel
+              </Button>
             </div>
           </div>
         </CardHeader>
@@ -195,4 +256,4 @@ export function HistoryView() {
       </Card>
     </div>
   );
-};
+}
