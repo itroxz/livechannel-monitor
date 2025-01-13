@@ -13,7 +13,6 @@ async function fetchYouTubeMetrics(channel: any, YOUTUBE_API_KEY: string) {
     // 1. Get channel ID directly from channel name/handle
     let channelId = channel.channel_name;
     if (channel.channel_name.startsWith('@')) {
-      // If it's a handle, we need to search for the channel first
       const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${encodeURIComponent(channel.channel_name)}&key=${YOUTUBE_API_KEY}`;
       console.log('Searching for channel:', channel.channel_name);
       
@@ -25,9 +24,17 @@ async function fetchYouTubeMetrics(channel: any, YOUTUBE_API_KEY: string) {
       });
 
       if (!searchResponse.ok) {
-        const errorText = await searchResponse.text();
-        console.error('Channel search error:', errorText);
-        throw new Error(`Failed to search channel: ${errorText}`);
+        const errorData = await searchResponse.json();
+        console.error('Channel search error:', JSON.stringify(errorData, null, 2));
+        
+        // Check for API not enabled error
+        if (errorData.error?.status === "PERMISSION_DENIED" && 
+            errorData.error?.message?.includes("API") && 
+            errorData.error?.message?.includes("disabled")) {
+          throw new Error("YouTube API is not enabled. Please enable it in the Google Cloud Console and try again.");
+        }
+        
+        throw new Error(`Failed to search channel: ${JSON.stringify(errorData, null, 2)}`);
       }
       
       const searchData = await searchResponse.json();
@@ -55,9 +62,9 @@ async function fetchYouTubeMetrics(channel: any, YOUTUBE_API_KEY: string) {
     });
 
     if (!liveResponse.ok) {
-      const errorText = await liveResponse.text();
-      console.error('Live stream check error:', errorText);
-      throw new Error(`Failed to check live status: ${errorText}`);
+      const errorData = await liveResponse.json();
+      console.error('Live stream check error:', errorData);
+      throw new Error(`Failed to check live status: ${JSON.stringify(errorData)}`);
     }
     
     const liveData = await liveResponse.json();
@@ -83,9 +90,9 @@ async function fetchYouTubeMetrics(channel: any, YOUTUBE_API_KEY: string) {
     });
 
     if (!statsResponse.ok) {
-      const errorText = await statsResponse.text();
-      console.error('Stream statistics error:', errorText);
-      throw new Error(`Failed to fetch stream statistics: ${errorText}`);
+      const errorData = await statsResponse.json();
+      console.error('Stream statistics error:', errorData);
+      throw new Error(`Failed to fetch stream statistics: ${JSON.stringify(errorData)}`);
     }
     
     const statsData = await statsResponse.json();
@@ -101,31 +108,6 @@ async function fetchYouTubeMetrics(channel: any, YOUTUBE_API_KEY: string) {
     return { isLive: true, viewersCount };
   } catch (error) {
     console.error(`Error fetching metrics for channel ${channel.channel_name}:`, error);
-    throw error;
-  }
-}
-
-async function updateMetricsInDatabase(channel: any, metrics: any, supabase: any) {
-  console.log(`Updating metrics for channel ${channel.channel_name}:`, metrics);
-  
-  try {
-    const { error } = await supabase
-      .from('metrics')
-      .insert({
-        channel_id: channel.id,
-        viewers_count: metrics.viewersCount,
-        is_live: metrics.isLive,
-        timestamp: new Date().toISOString()
-      });
-
-    if (error) {
-      console.error(`Error inserting metrics for ${channel.channel_name}:`, error);
-      throw error;
-    }
-    
-    console.log(`Metrics updated successfully for ${channel.channel_name}`);
-  } catch (error) {
-    console.error(`Database error for ${channel.channel_name}:`, error);
     throw error;
   }
 }
@@ -178,24 +160,52 @@ serve(async (req) => {
       try {
         console.log(`Processing channel: ${channel.channel_name}`);
         const metrics = await fetchYouTubeMetrics(channel, YOUTUBE_API_KEY);
-        await updateMetricsInDatabase(channel, metrics, supabase);
-        return { channel: channel.channel_name, success: true };
+        
+        // Update metrics in database
+        if (metrics.isLive) {
+          const { error: metricsError } = await supabase
+            .from('metrics')
+            .insert({
+              channel_id: channel.id,
+              viewers_count: metrics.viewersCount,
+              is_live: metrics.isLive,
+              timestamp: new Date().toISOString()
+            });
+
+          if (metricsError) {
+            console.error(`Error inserting metrics for ${channel.channel_name}:`, metricsError);
+            throw metricsError;
+          }
+        }
+        
+        return { channel: channel.channel_name, success: true, metrics };
       } catch (error) {
         console.error(`Error processing channel ${channel.channel_name}:`, error);
-        return { channel: channel.channel_name, success: false, error: error.message };
+        return { 
+          channel: channel.channel_name, 
+          success: false, 
+          error: error instanceof Error ? error.message : String(error)
+        };
       }
     }));
 
     console.log('Channel processing results:', results);
     return new Response(
-      JSON.stringify({ message: 'Metrics updated successfully', results }),
+      JSON.stringify({ 
+        message: 'Metrics updated successfully', 
+        results,
+        timestamp: new Date().toISOString()
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
     console.error('Error in fetch-youtube-metrics function:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error instanceof Error ? error.message : String(error),
+        timestamp: new Date().toISOString()
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     );
   }
