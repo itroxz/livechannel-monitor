@@ -1,108 +1,97 @@
-import { useNavigate, useParams } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { GroupStats } from "@/components/groups/GroupStats";
-import { ViewersChart } from "@/components/groups/ViewersChart";
-import { ChannelsList } from "@/components/groups/ChannelsList";
-import { useState } from "react";
-import { useMetrics } from "@/hooks/useMetrics";
-import { toast } from "sonner";
-import { GroupHeader } from "@/components/groups/GroupHeader";
-import { TimeRangeSelector } from "@/components/groups/TimeRangeSelector";
+import { useParams } from "react-router-dom";
 import { useGroupData } from "@/hooks/useGroupData";
+import { GroupHeader } from "@/components/groups/GroupHeader";
+import { GroupStats } from "@/components/groups/GroupStats";
+import { ChannelsList } from "@/components/groups/ChannelsList";
+import { ViewersChart } from "@/components/groups/ViewersChart";
+import { useMetrics } from "@/hooks/useMetrics";
+import { useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
-const GroupDetails = () => {
+export default function GroupDetails() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const [timeRange, setTimeRange] = useState<number>(1);
-  const { calculateViewerStats } = useMetrics();
-
-  if (!id) {
-    navigate("/");
-    return null;
-  }
+  if (!id) throw new Error("No group ID provided");
 
   const { group, channels, metrics } = useGroupData(id);
+  const { calculateViewerStats } = useMetrics();
 
-  // Calculate peak viewers from metrics within the selected time range
-  const calculatePeakViewers = () => {
-    const now = new Date();
-    const cutoffTime = new Date(now.getTime() - timeRange * 60 * 60 * 1000);
-    const filteredMetrics = metrics.filter(m => new Date(m.timestamp) > cutoffTime);
-    return filteredMetrics.length > 0
-      ? Math.max(...filteredMetrics.map(m => m.viewers_count))
-      : 0;
-  };
-
-  const peakViewers = calculatePeakViewers();
-
-  const handleDeleteGroup = async () => {
+  // Função para chamar o endpoint de métricas do YouTube
+  const fetchYoutubeMetrics = async () => {
     try {
-      const { error } = await supabase.from("groups").delete().eq("id", id);
-      if (error) throw error;
-      toast.success("Grupo excluído com sucesso!");
-      navigate("/");
+      console.log("Iniciando chamada para fetch-youtube-metrics");
+      const { data, error } = await supabase.functions.invoke('fetch-youtube-metrics');
+      
+      if (error) {
+        console.error("Erro ao chamar fetch-youtube-metrics:", error);
+        return;
+      }
+      
+      console.log("Resposta do fetch-youtube-metrics:", data);
     } catch (error) {
-      console.error("Erro ao excluir grupo:", error);
-      toast.error("Erro ao excluir grupo. Tente novamente.");
+      console.error("Erro ao atualizar métricas do YouTube:", error);
+      toast.error("Erro ao atualizar métricas do YouTube");
     }
   };
 
-  const handleDeleteChannel = async (channelId: string) => {
-    try {
-      const { error } = await supabase.from("channels").delete().eq("id", channelId);
-      if (error) throw error;
-      toast.success("Canal excluído com sucesso!");
-    } catch (error) {
-      console.error("Erro ao excluir canal:", error);
-      toast.error("Erro ao excluir canal. Tente novamente.");
-    }
-  };
+  // Efeito para iniciar as chamadas periódicas
+  useEffect(() => {
+    // Primeira chamada imediata
+    fetchYoutubeMetrics();
 
-  const channelIds = channels.map(channel => channel.id);
-  const stats = calculateViewerStats(channelIds);
+    // Configurar chamadas periódicas a cada 60 segundos
+    const interval = setInterval(fetchYoutubeMetrics, 60000);
 
-  const chartData = metrics
-    .map((metric) => {
-      const channel = channels.find(c => c.id === metric.channel_id);
-      return {
-        timestamp: metric.timestamp,
-        viewers: metric.viewers_count,
-        channelName: channel?.channel_name || 'Unknown',
-      };
-    });
+    // Cleanup ao desmontar o componente
+    return () => clearInterval(interval);
+  }, []);
+
+  if (!group || !channels) {
+    return <div>Carregando...</div>;
+  }
+
+  const { totalViewers, liveChannelsCount } = calculateViewerStats(channels.map(c => c.id));
+  const peakViewers = channels.reduce((sum, channel) => sum + (channel.peak_viewers_count || 0), 0);
+
+  const chartData = metrics.map((metric) => {
+    const channel = channels.find((c) => c.id === metric.channel_id);
+    return {
+      timestamp: metric.timestamp,
+      viewers: metric.viewers_count,
+      channelName: channel?.channel_name || "Desconhecido",
+    };
+  });
 
   return (
-    <div className="p-8">
-      <GroupHeader
-        groupId={id}
-        groupName={group?.name}
-        onBack={() => navigate("/")}
-        onDeleteGroup={handleDeleteGroup}
-      />
-
+    <div className="space-y-8">
+      <GroupHeader group={group} />
       <GroupStats
         totalChannels={channels.length}
-        liveChannels={stats.liveChannelsCount}
-        totalViewers={stats.totalViewers}
+        liveChannels={liveChannelsCount}
+        totalViewers={totalViewers}
         peakViewers={peakViewers}
       />
+      <div className="grid gap-8 grid-cols-1">
+        <ViewersChart data={chartData} />
+        <ChannelsList
+          channels={channels}
+          groupId={id}
+          onDeleteChannel={async (channelId) => {
+            try {
+              const { error } = await supabase
+                .from("channels")
+                .delete()
+                .eq("id", channelId);
 
-      <div className="mb-8">
-        <TimeRangeSelector
-          timeRange={timeRange}
-          onTimeRangeChange={setTimeRange}
+              if (error) throw error;
+              toast.success("Canal removido com sucesso!");
+            } catch (error) {
+              console.error("Error deleting channel:", error);
+              toast.error("Erro ao remover canal");
+            }
+          }}
         />
-        <ViewersChart data={chartData} timeRange={timeRange} />
       </div>
-
-      <ChannelsList
-        channels={channels}
-        groupId={id}
-        onDeleteChannel={handleDeleteChannel}
-      />
     </div>
   );
-};
-
-export default GroupDetails;
+}
