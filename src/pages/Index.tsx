@@ -22,14 +22,16 @@ const Index = () => {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full">
+      <div className="min-h-screen flex w-full bg-gradient-to-br from-white to-gray-50">
         <AppSidebar />
         <main className="flex-1 p-8">
           <div className="flex justify-between items-center mb-8">
-            <h1 className="text-3xl font-bold">Dashboard</h1>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">
+              ClanLive Dashboard
+            </h1>
             <div className="flex gap-4">
               <GroupFormDialog />
-              <Button variant="outline" onClick={handleLogout}>
+              <Button variant="outline" onClick={handleLogout} className="bg-white/50 backdrop-blur-sm">
                 <LogOut className="h-4 w-4 mr-2" />
                 Sair
               </Button>

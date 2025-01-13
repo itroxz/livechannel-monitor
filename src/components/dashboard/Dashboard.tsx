@@ -51,40 +51,42 @@ export function Dashboard() {
   const globalStats = calculateViewerStats();
 
   return (
-    <div>
-      <div className="grid gap-4 md:grid-cols-3 mb-8">
+    <div className="space-y-8">
+      <div className="grid gap-4 md:grid-cols-3">
         <StatsCard
           title="Total de Canais"
-          value={channels.length.toString()}
-          icon={<Video className="h-4 w-4 text-muted-foreground" />}
+          value={channels.length}
+          icon={<Video className="h-5 w-5" />}
         />
         <StatsCard
           title="Canais ao Vivo"
-          value={globalStats.liveChannelsCount.toString()}
-          icon={<Users className="h-4 w-4 text-muted-foreground" />}
+          value={globalStats.liveChannelsCount}
+          icon={<Users className="h-5 w-5" />}
         />
         <StatsCard
           title="Total de Espectadores"
-          value={globalStats.totalViewers.toString()}
-          icon={<Eye className="h-4 w-4 text-muted-foreground" />}
+          value={globalStats.totalViewers}
+          icon={<Eye className="h-5 w-5" />}
         />
       </div>
 
-      <h2 className="text-2xl font-bold mb-4">Grupos</h2>
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {groups.map((group) => {
-          const stats = getGroupStats(group.id);
-          return (
-            <GroupCard
-              key={group.id}
-              id={group.id}
-              name={group.name}
-              totalChannels={stats.totalChannels}
-              liveChannels={stats.liveChannels}
-              totalViewers={stats.totalViewers}
-            />
-          );
-        })}
+      <div>
+        <h2 className="text-2xl font-bold mb-4 bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent">Grupos</h2>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {groups.map((group) => {
+            const stats = getGroupStats(group.id);
+            return (
+              <GroupCard
+                key={group.id}
+                id={group.id}
+                name={group.name}
+                totalChannels={stats.totalChannels}
+                liveChannels={stats.liveChannels}
+                totalViewers={stats.totalViewers}
+              />
+            );
+          })}
+        </div>
       </div>
     </div>
   );
