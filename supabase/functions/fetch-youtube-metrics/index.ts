@@ -14,8 +14,9 @@ async function fetchYouTubeChannelData(channelNames: string[], apiKey: string) {
     
     for (const channelName of channelNames) {
       try {
-        // Remove @ if present
-        const cleanChannelName = channelName.startsWith('@') ? channelName.substring(1) : channelName;
+        // Remove @ if present and clean the channel name
+        const cleanChannelName = channelName.replace('@', '').trim();
+        console.log(`Processing channel: ${cleanChannelName}`);
         
         // First, search for the channel
         const searchResponse = await fetch(
@@ -23,7 +24,7 @@ async function fetchYouTubeChannelData(channelNames: string[], apiKey: string) {
         );
 
         if (!searchResponse.ok) {
-          console.error(`Error searching for channel ${channelName}:`, await searchResponse.text());
+          console.error(`Error searching for channel ${cleanChannelName}:`, await searchResponse.text());
           continue;
         }
 
@@ -31,11 +32,11 @@ async function fetchYouTubeChannelData(channelNames: string[], apiKey: string) {
         const channelId = searchData.items?.[0]?.id?.channelId;
         
         if (!channelId) {
-          console.error(`Channel ID not found for ${channelName}`);
+          console.error(`Channel ID not found for ${cleanChannelName}`);
           continue;
         }
 
-        console.log(`Found channel ID for ${channelName}:`, channelId);
+        console.log(`Found channel ID for ${cleanChannelName}:`, channelId);
 
         // Now search for active live streams for this channel
         const liveStreamResponse = await fetch(
@@ -43,15 +44,18 @@ async function fetchYouTubeChannelData(channelNames: string[], apiKey: string) {
         );
 
         if (!liveStreamResponse.ok) {
-          console.error(`Error fetching live stream for ${channelName}:`, await liveStreamResponse.text());
+          console.error(`Error fetching live stream for ${cleanChannelName}:`, await liveStreamResponse.text());
           continue;
         }
 
         const liveStreamData = await liveStreamResponse.json();
-        const liveStream = liveStreamData.items?.[0];
+        console.log(`Live stream data for ${cleanChannelName}:`, liveStreamData);
 
-        if (liveStream) {
-          console.log(`Found live stream for ${channelName}:`, liveStream.id.videoId);
+        const liveStream = liveStreamData.items?.[0];
+        const isLive = !!liveStream;
+
+        if (isLive && liveStream) {
+          console.log(`Found live stream for ${cleanChannelName}:`, liveStream.id.videoId);
           
           // Get live stream details including viewer count
           const videoResponse = await fetch(
@@ -59,31 +63,34 @@ async function fetchYouTubeChannelData(channelNames: string[], apiKey: string) {
           );
 
           if (!videoResponse.ok) {
-            console.error(`Error fetching video details for ${channelName}:`, await videoResponse.text());
+            console.error(`Error fetching video details for ${cleanChannelName}:`, await videoResponse.text());
             continue;
           }
 
           const videoData = await videoResponse.json();
           const videoDetails = videoData.items?.[0];
-          const concurrentViewers = videoDetails?.liveStreamingDetails?.concurrentViewers || 
-                                  videoDetails?.statistics?.viewCount || 0;
+          
+          // Try to get concurrent viewers from either liveStreamingDetails or statistics
+          const concurrentViewers = parseInt(
+            videoDetails?.liveStreamingDetails?.concurrentViewers || 
+            videoDetails?.statistics?.viewCount || 
+            '0'
+          );
 
-          console.log(`Channel ${channelName} live stream details:`, {
+          console.log(`Channel ${cleanChannelName} live stream details:`, {
+            isLive,
             concurrentViewers,
             videoDetails
           });
 
-          if (concurrentViewers) {
-            results.push({
-              channelName,
-              channelId,
-              isLive: true,
-              viewers: parseInt(concurrentViewers)
-            });
-            console.log(`Channel ${channelName} is live with ${concurrentViewers} viewers`);
-          }
+          results.push({
+            channelName,
+            channelId,
+            isLive: true,
+            viewers: concurrentViewers
+          });
         } else {
-          console.log(`Channel ${channelName} is not live`);
+          console.log(`Channel ${cleanChannelName} is not live`);
           results.push({
             channelName,
             channelId,
@@ -144,8 +151,14 @@ serve(async (req) => {
         
         // Process each channel's data
         for (const data of youtubeData) {
-          const channel = channels.find(c => c.channel_name === data.channelName);
-          if (!channel) continue;
+          const channel = channels.find(c => 
+            c.channel_name.replace('@', '').trim() === data.channelName.replace('@', '').trim()
+          );
+          
+          if (!channel) {
+            console.error(`Channel not found in database: ${data.channelName}`);
+            continue;
+          }
 
           // Get the current peak viewers for this channel
           const { data: currentMetrics, error: metricsError } = await supabase
@@ -163,7 +176,8 @@ serve(async (req) => {
           const currentPeak = currentMetrics?.[0]?.peak_viewers_count || 0;
           const newPeak = Math.max(currentPeak, data.viewers);
 
-          console.log(`Channel ${data.channelName} metrics:`, {
+          console.log(`Channel ${data.channelName} metrics update:`, {
+            channelId: channel.id,
             currentPeak,
             newViewers: data.viewers,
             newPeak,
