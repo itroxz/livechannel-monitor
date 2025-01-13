@@ -8,7 +8,7 @@ import { GroupStats } from "@/components/groups/GroupStats";
 import { ViewersChart } from "@/components/groups/ViewersChart";
 import { ChannelsList } from "@/components/groups/ChannelsList";
 import { Plus, ArrowLeft, MoreHorizontal, Pen, Trash } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,6 +33,7 @@ const GroupDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [timeRange, setTimeRange] = useState<number>(1); // Default 1 hora
 
   const { data: group } = useQuery({
     queryKey: ["group", id],
@@ -242,7 +243,33 @@ const GroupDetails = () => {
       />
 
       <div className="mb-8">
-        <ViewersChart data={chartData} />
+        <div className="flex justify-end gap-2 mb-4">
+          <Button
+            variant={timeRange === 1 ? "default" : "outline"}
+            onClick={() => setTimeRange(1)}
+          >
+            1 hora
+          </Button>
+          <Button
+            variant={timeRange === 2 ? "default" : "outline"}
+            onClick={() => setTimeRange(2)}
+          >
+            2 horas
+          </Button>
+          <Button
+            variant={timeRange === 3 ? "default" : "outline"}
+            onClick={() => setTimeRange(3)}
+          >
+            3 horas
+          </Button>
+          <Button
+            variant={timeRange === 4 ? "default" : "outline"}
+            onClick={() => setTimeRange(4)}
+          >
+            4 horas
+          </Button>
+        </div>
+        <ViewersChart data={chartData} timeRange={timeRange} />
       </div>
 
       <ChannelsList
