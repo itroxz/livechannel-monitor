@@ -8,6 +8,8 @@ import {
   Tooltip,
   ResponsiveContainer,
   ReferenceLine,
+  Area,
+  AreaChart,
 } from "recharts";
 import { format, parseISO } from "date-fns";
 import { ChartTooltip } from "./ChartTooltip";
@@ -38,6 +40,8 @@ export function ViewersChart({ data, timeRange = 1 }: ViewersChartProps) {
     );
   }
 
+  const gradientId = "viewersGradient";
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -47,41 +51,81 @@ export function ViewersChart({ data, timeRange = 1 }: ViewersChartProps) {
       </div>
       <div className="h-[400px] w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart
+          <AreaChart
             data={chartData}
             margin={{
               top: 10,
               right: 30,
-              left: 0,
+              left: 10,
               bottom: 0,
             }}
           >
-            <CartesianGrid strokeDasharray="3 3" />
+            <defs>
+              <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#8884d8" stopOpacity={0.3}/>
+                <stop offset="95%" stopColor="#8884d8" stopOpacity={0}/>
+              </linearGradient>
+            </defs>
+            <CartesianGrid 
+              strokeDasharray="3 3" 
+              vertical={false}
+              stroke="#f0f0f0"
+            />
             <XAxis
               dataKey="timestamp"
               tickFormatter={(value) => format(parseISO(value), "HH:mm")}
+              stroke="#888888"
+              fontSize={12}
+              tickLine={false}
+              axisLine={false}
+              dy={10}
             />
-            <YAxis />
-            <Tooltip content={<ChartTooltip />} />
-            <ReferenceLine 
-              y={peakViewers} 
-              stroke="#ff0000" 
-              strokeDasharray="3 3"
-              label={{ 
-                value: `Pico: ${peakViewers}`,
-                position: 'right',
-                fill: '#ff0000',
-                fontSize: 12
+            <YAxis
+              stroke="#888888"
+              fontSize={12}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={(value) => value.toLocaleString()}
+              dx={-10}
+            />
+            <Tooltip 
+              content={<ChartTooltip />}
+              cursor={{
+                stroke: '#f0f0f0',
+                strokeWidth: 2,
+                strokeDasharray: "5 5"
               }}
             />
-            <Line
+            <ReferenceLine 
+              y={peakViewers} 
+              stroke="#ff6b6b" 
+              strokeDasharray="3 3"
+              strokeWidth={2}
+              label={{ 
+                value: `Pico: ${peakViewers.toLocaleString()}`,
+                position: 'right',
+                fill: '#ff6b6b',
+                fontSize: 12,
+                fontWeight: 'bold'
+              }}
+            />
+            <Area
               type="monotone"
               dataKey="totalViewers"
               stroke="#8884d8"
               strokeWidth={2}
+              fill={`url(#${gradientId})`}
               dot={false}
+              activeDot={{
+                r: 6,
+                stroke: "#8884d8",
+                strokeWidth: 2,
+                fill: "#ffffff"
+              }}
+              animationDuration={1000}
+              animationEasing="ease-in-out"
             />
-          </LineChart>
+          </AreaChart>
         </ResponsiveContainer>
       </div>
     </div>
