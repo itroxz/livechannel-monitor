@@ -6,6 +6,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+console.log('YouTube metrics fetch function loaded');
+
 serve(async (req) => {
   // Handle CORS
   if (req.method === 'OPTIONS') {
@@ -13,20 +15,18 @@ serve(async (req) => {
   }
 
   try {
-    console.log('Starting YouTube metrics fetch function with enhanced logging');
+    console.log('Starting YouTube metrics fetch function');
     
-    // Get environment variables and verify they exist
+    // Get environment variables
     const YOUTUBE_API_KEY = Deno.env.get('YOUTUBE_API_KEY');
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
     console.log('Checking environment variables...');
     if (!YOUTUBE_API_KEY) {
-      console.error('YouTube API Key is missing');
       throw new Error('YouTube API Key is not configured');
     }
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-      console.error('Supabase configuration is missing');
       throw new Error('Missing Supabase configuration');
     }
     console.log('Environment variables verified successfully');
@@ -34,16 +34,6 @@ serve(async (req) => {
     // Initialize Supabase client
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     console.log('Supabase client initialized');
-
-    // Test YouTube API key validity
-    console.log('Testing YouTube API key validity...');
-    const testUrl = `https://www.googleapis.com/youtube/v3/search?part=id&key=${YOUTUBE_API_KEY}&maxResults=1`;
-    const testResponse = await fetch(testUrl);
-    if (!testResponse.ok) {
-      console.error('YouTube API key test failed:', await testResponse.text());
-      throw new Error('Invalid YouTube API key');
-    }
-    console.log('YouTube API key is valid');
 
     // Get all YouTube channels
     console.log('Fetching YouTube channels from database...');
@@ -70,16 +60,20 @@ serve(async (req) => {
     // Process each channel
     for (const channel of channels) {
       try {
-        console.log(`\nProcessing channel: ${channel.channel_name} (ID: ${channel.id})`);
+        console.log(`Processing channel: ${channel.channel_name}`);
         
         // Search for the channel
         const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=id&q=${encodeURIComponent(channel.channel_name)}&type=channel&key=${YOUTUBE_API_KEY}`;
-        console.log('Searching channel with URL:', searchUrl);
+        console.log('Searching channel...');
         
         const searchResponse = await fetch(searchUrl);
-        const searchData = await searchResponse.json();
+        if (!searchResponse.ok) {
+          console.error('YouTube API search error:', await searchResponse.text());
+          continue;
+        }
         
-        console.log('Search response:', JSON.stringify(searchData, null, 2));
+        const searchData = await searchResponse.json();
+        console.log('Search response:', searchData);
 
         if (!searchData.items?.length) {
           console.log(`No channel found for ${channel.channel_name}`);
@@ -91,12 +85,16 @@ serve(async (req) => {
 
         // Get live streams
         const liveUrl = `https://www.googleapis.com/youtube/v3/search?part=id,snippet&channelId=${channelId}&eventType=live&type=video&key=${YOUTUBE_API_KEY}`;
-        console.log('Checking live streams with URL:', liveUrl);
+        console.log('Checking live streams...');
         
         const liveResponse = await fetch(liveUrl);
-        const liveData = await liveResponse.json();
+        if (!liveResponse.ok) {
+          console.error('YouTube API live stream error:', await liveResponse.text());
+          continue;
+        }
         
-        console.log('Live stream response:', JSON.stringify(liveData, null, 2));
+        const liveData = await liveResponse.json();
+        console.log('Live stream response:', liveData);
 
         let isLive = false;
         let viewersCount = 0;
@@ -106,13 +104,17 @@ serve(async (req) => {
           console.log(`Found live video ID: ${videoId}`);
 
           // Get live stream details
-          const statsUrl = `https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails,statistics&id=${videoId}&key=${YOUTUBE_API_KEY}`;
-          console.log('Fetching stream stats with URL:', statsUrl);
+          const statsUrl = `https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails&id=${videoId}&key=${YOUTUBE_API_KEY}`;
+          console.log('Fetching stream stats...');
           
           const statsResponse = await fetch(statsUrl);
-          const statsData = await statsResponse.json();
+          if (!statsResponse.ok) {
+            console.error('YouTube API stats error:', await statsResponse.text());
+            continue;
+          }
           
-          console.log('Stream stats response:', JSON.stringify(statsData, null, 2));
+          const statsData = await statsResponse.json();
+          console.log('Stream stats response:', statsData);
 
           if (statsData.items?.length > 0) {
             isLive = true;
@@ -124,11 +126,7 @@ serve(async (req) => {
         }
 
         // Update metrics
-        console.log(`Updating metrics for ${channel.channel_name}:`, {
-          isLive,
-          viewersCount
-        });
-
+        console.log(`Updating metrics for ${channel.channel_name}`);
         const { error: metricsError } = await supabase
           .from('metrics')
           .insert({
@@ -144,21 +142,6 @@ serve(async (req) => {
         }
 
         console.log(`Successfully updated metrics for ${channel.channel_name}`);
-
-        // Update peak viewers if necessary
-        if (viewersCount > channel.peak_viewers_count) {
-          console.log(`New peak viewers for ${channel.channel_name}: ${viewersCount}`);
-          const { error: updateError } = await supabase
-            .from('channels')
-            .update({ peak_viewers_count: viewersCount })
-            .eq('id', channel.id);
-
-          if (updateError) {
-            console.error(`Error updating peak viewers for ${channel.channel_name}:`, updateError);
-          } else {
-            console.log(`Updated peak viewers for ${channel.channel_name} to ${viewersCount}`);
-          }
-        }
 
       } catch (error) {
         console.error(`Error processing channel ${channel.channel_name}:`, error);
