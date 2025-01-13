@@ -9,6 +9,7 @@ import {
   ResponsiveContainer,
   Legend,
   TooltipProps,
+  ReferenceLine,
 } from "recharts";
 import { format, parseISO } from "date-fns";
 
@@ -73,6 +74,9 @@ export function ViewersChart({ data, timeRange = 1 }: ViewersChartProps) {
   };
 
   const chartData = aggregateData();
+  const peakViewers = chartData.length > 0 
+    ? Math.max(...chartData.map(d => d.totalViewers))
+    : 0;
 
   if (chartData.length === 0) {
     return (
@@ -103,33 +107,51 @@ export function ViewersChart({ data, timeRange = 1 }: ViewersChartProps) {
   };
 
   return (
-    <div className="h-[400px] w-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart
-          data={chartData}
-          margin={{
-            top: 10,
-            right: 30,
-            left: 0,
-            bottom: 0,
-          }}
-        >
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis
-            dataKey="timestamp"
-            tickFormatter={(value) => format(parseISO(value), "HH:mm")}
-          />
-          <YAxis />
-          <Tooltip content={<CustomTooltip />} />
-          <Line
-            type="monotone"
-            dataKey="totalViewers"
-            stroke="#8884d8"
-            strokeWidth={2}
-            dot={false}
-          />
-        </LineChart>
-      </ResponsiveContainer>
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <div className="text-sm text-muted-foreground">
+          Pico de viewers no período: <span className="font-medium text-foreground">{peakViewers}</span>
+        </div>
+      </div>
+      <div className="h-[400px] w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart
+            data={chartData}
+            margin={{
+              top: 10,
+              right: 30,
+              left: 0,
+              bottom: 0,
+            }}
+          >
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis
+              dataKey="timestamp"
+              tickFormatter={(value) => format(parseISO(value), "HH:mm")}
+            />
+            <YAxis />
+            <Tooltip content={<CustomTooltip />} />
+            <ReferenceLine 
+              y={peakViewers} 
+              stroke="#ff0000" 
+              strokeDasharray="3 3"
+              label={{ 
+                value: `Pico: ${peakViewers}`,
+                position: 'right',
+                fill: '#ff0000',
+                fontSize: 12
+              }}
+            />
+            <Line
+              type="monotone"
+              dataKey="totalViewers"
+              stroke="#8884d8"
+              strokeWidth={2}
+              dot={false}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }
