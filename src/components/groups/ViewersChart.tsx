@@ -46,7 +46,7 @@ export function ViewersChart({ data, timeRange = 1 }: ViewersChartProps) {
 
   const aggregateData = () => {
     const filteredData = filterDataByTimeRange();
-    console.log("Filtered data:", filteredData);
+    console.log("Dados filtrados para o gráfico:", filteredData);
     
     const aggregatedByMinute: Record<string, ChartData> = {};
 
@@ -69,7 +69,7 @@ export function ViewersChart({ data, timeRange = 1 }: ViewersChartProps) {
       new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     );
     
-    console.log("Aggregated chart data:", sortedData);
+    console.log("Dados agregados para o gráfico:", sortedData);
     return sortedData;
   };
 

@@ -35,16 +35,39 @@ export default function GroupDetails() {
     }
   };
 
+  // Função para chamar o endpoint de métricas da Twitch
+  const fetchTwitchMetrics = async () => {
+    try {
+      console.log("Iniciando chamada para fetch-twitch-metrics");
+      const { data, error } = await supabase.functions.invoke('fetch-twitch-metrics');
+      
+      if (error) {
+        console.error("Erro ao chamar fetch-twitch-metrics:", error);
+        return;
+      }
+      
+      console.log("Resposta do fetch-twitch-metrics:", data);
+    } catch (error) {
+      console.error("Erro ao atualizar métricas da Twitch:", error);
+      toast.error("Erro ao atualizar métricas da Twitch");
+    }
+  };
+
   // Efeito para iniciar as chamadas periódicas
   useEffect(() => {
     // Primeira chamada imediata
     fetchYoutubeMetrics();
+    fetchTwitchMetrics();
 
     // Configurar chamadas periódicas a cada 30 segundos
-    const interval = setInterval(fetchYoutubeMetrics, 30000);
+    const youtubeInterval = setInterval(fetchYoutubeMetrics, 30000);
+    const twitchInterval = setInterval(fetchTwitchMetrics, 30000);
 
     // Cleanup ao desmontar o componente
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(youtubeInterval);
+      clearInterval(twitchInterval);
+    };
   }, []);
 
   if (!group || !channels) {
