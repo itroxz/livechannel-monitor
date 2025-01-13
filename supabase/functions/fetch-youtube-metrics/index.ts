@@ -9,18 +9,17 @@ const corsHeaders = {
 async function fetchYouTubeChannelData(channelNames: string[], apiKey: string) {
   try {
     console.log('Fetching YouTube data for channels:', channelNames);
-    
     const results = [];
     
     for (const channelName of channelNames) {
       try {
-        // Remove @ if present and clean the channel name
+        // Clean channel name
         const cleanChannelName = channelName.replace('@', '').trim();
         console.log(`Processing channel: ${cleanChannelName}`);
         
-        // First, search for the channel
+        // First, get channel ID using search
         const searchResponse = await fetch(
-          `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${cleanChannelName}&type=channel&key=${apiKey}`
+          `https://www.googleapis.com/youtube/v3/search?part=id&q=${cleanChannelName}&type=channel&key=${apiKey}`
         );
 
         if (!searchResponse.ok) {
@@ -38,65 +37,61 @@ async function fetchYouTubeChannelData(channelNames: string[], apiKey: string) {
 
         console.log(`Found channel ID for ${cleanChannelName}:`, channelId);
 
-        // Now search for active live streams for this channel
-        const liveStreamResponse = await fetch(
-          `https://www.googleapis.com/youtube/v3/search?part=snippet&channelId=${channelId}&eventType=live&type=video&key=${apiKey}`
+        // Get channel's live broadcasts
+        const videosResponse = await fetch(
+          `https://www.googleapis.com/youtube/v3/search?part=id,snippet&channelId=${channelId}&eventType=live&type=video&key=${apiKey}`
         );
 
-        if (!liveStreamResponse.ok) {
-          console.error(`Error fetching live stream for ${cleanChannelName}:`, await liveStreamResponse.text());
+        if (!videosResponse.ok) {
+          console.error(`Error fetching videos for ${cleanChannelName}:`, await videosResponse.text());
           continue;
         }
 
-        const liveStreamData = await liveStreamResponse.json();
-        console.log(`Live stream data for ${cleanChannelName}:`, liveStreamData);
+        const videosData = await videosResponse.json();
+        console.log(`Live stream search results for ${cleanChannelName}:`, videosData);
 
-        const liveStream = liveStreamData.items?.[0];
-        const isLive = !!liveStream;
+        const liveVideoId = videosData.items?.[0]?.id?.videoId;
+        const isLive = !!liveVideoId;
 
-        if (isLive && liveStream) {
-          console.log(`Found live stream for ${cleanChannelName}:`, liveStream.id.videoId);
-          
-          // Get live stream details including viewer count
-          const videoResponse = await fetch(
-            `https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails,statistics&id=${liveStream.id.videoId}&key=${apiKey}`
+        if (isLive) {
+          // Get live stream statistics
+          const videoStatsResponse = await fetch(
+            `https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails,statistics&id=${liveVideoId}&key=${apiKey}`
           );
 
-          if (!videoResponse.ok) {
-            console.error(`Error fetching video details for ${cleanChannelName}:`, await videoResponse.text());
+          if (!videoStatsResponse.ok) {
+            console.error(`Error fetching video stats for ${cleanChannelName}:`, await videoStatsResponse.text());
             continue;
           }
 
-          const videoData = await videoResponse.json();
-          const videoDetails = videoData.items?.[0];
-          
-          // Try to get concurrent viewers from either liveStreamingDetails or statistics
-          const concurrentViewers = parseInt(
-            videoDetails?.liveStreamingDetails?.concurrentViewers || 
-            videoDetails?.statistics?.viewCount || 
+          const videoStats = await videoStatsResponse.json();
+          console.log(`Live stream stats for ${cleanChannelName}:`, videoStats);
+
+          const viewerCount = parseInt(
+            videoStats.items?.[0]?.liveStreamingDetails?.concurrentViewers || 
+            videoStats.items?.[0]?.statistics?.viewCount ||
             '0'
           );
-
-          console.log(`Channel ${cleanChannelName} live stream details:`, {
-            isLive,
-            concurrentViewers,
-            videoDetails
-          });
 
           results.push({
             channelName,
             channelId,
             isLive: true,
-            viewers: concurrentViewers
+            viewers: viewerCount
+          });
+          
+          console.log(`Successfully processed live channel ${cleanChannelName}:`, {
+            isLive: true,
+            viewers: viewerCount
           });
         } else {
-          console.log(`Channel ${cleanChannelName} is not live`);
           results.push({
             channelName,
             channelId,
             isLive: false,
             viewers: 0
           });
+          console.log(`Channel ${cleanChannelName} is not live`);
         }
       } catch (error) {
         console.error(`Error processing channel ${channelName}:`, error);
@@ -111,7 +106,6 @@ async function fetchYouTubeChannelData(channelNames: string[], apiKey: string) {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -125,10 +119,9 @@ serve(async (req) => {
       throw new Error('Missing required environment variables');
     }
 
-    // Initialize Supabase client with service role key
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Get all YouTube channels from the database
+    // Get YouTube channels
     const { data: channels, error: channelsError } = await supabase
       .from('channels')
       .select('*')
@@ -138,70 +131,65 @@ serve(async (req) => {
       throw channelsError;
     }
 
-    console.log('Fetching metrics for YouTube channels:', channels);
+    console.log('Found YouTube channels:', channels);
 
-    // Process channels in batches of 50 (YouTube API limit)
+    // Process channels in batches
     const batchSize = 50;
     for (let i = 0; i < channels.length; i += batchSize) {
       const batchChannels = channels.slice(i, i + batchSize);
       const channelNames = batchChannels.map(channel => channel.channel_name);
 
-      try {
-        const youtubeData = await fetchYouTubeChannelData(channelNames, YOUTUBE_API_KEY);
+      const youtubeData = await fetchYouTubeChannelData(channelNames, YOUTUBE_API_KEY);
+      
+      for (const data of youtubeData) {
+        const channel = channels.find(c => 
+          c.channel_name.replace('@', '').trim() === data.channelName.replace('@', '').trim()
+        );
         
-        // Process each channel's data
-        for (const data of youtubeData) {
-          const channel = channels.find(c => 
-            c.channel_name.replace('@', '').trim() === data.channelName.replace('@', '').trim()
-          );
-          
-          if (!channel) {
-            console.error(`Channel not found in database: ${data.channelName}`);
-            continue;
-          }
+        if (!channel) {
+          console.error(`Channel not found in database: ${data.channelName}`);
+          continue;
+        }
 
-          // Get the current peak viewers for this channel
-          const { data: currentMetrics, error: metricsError } = await supabase
-            .from('metrics')
-            .select('peak_viewers_count')
-            .eq('channel_id', channel.id)
-            .order('peak_viewers_count', { ascending: false })
-            .limit(1);
+        // Get current peak viewers
+        const { data: currentMetrics, error: metricsError } = await supabase
+          .from('metrics')
+          .select('peak_viewers_count')
+          .eq('channel_id', channel.id)
+          .order('timestamp', { ascending: false })
+          .limit(1);
 
-          if (metricsError) {
-            console.error(`Error fetching current metrics for channel ${data.channelName}:`, metricsError);
-            continue;
-          }
+        if (metricsError) {
+          console.error(`Error fetching metrics for channel ${data.channelName}:`, metricsError);
+          continue;
+        }
 
-          const currentPeak = currentMetrics?.[0]?.peak_viewers_count || 0;
-          const newPeak = Math.max(currentPeak, data.viewers);
+        const currentPeak = currentMetrics?.[0]?.peak_viewers_count || 0;
+        const newPeak = Math.max(currentPeak, data.viewers);
 
-          console.log(`Channel ${data.channelName} metrics update:`, {
-            channelId: channel.id,
-            currentPeak,
-            newViewers: data.viewers,
-            newPeak,
-            isLive: data.isLive
+        console.log(`Updating metrics for channel ${data.channelName}:`, {
+          channelId: channel.id,
+          currentPeak,
+          newViewers: data.viewers,
+          newPeak,
+          isLive: data.isLive
+        });
+
+        const { error: insertError } = await supabase
+          .from('metrics')
+          .insert({
+            channel_id: channel.id,
+            viewers_count: data.viewers,
+            is_live: data.isLive,
+            peak_viewers_count: newPeak,
+            timestamp: new Date().toISOString()
           });
 
-          // Insert metrics into the database
-          const { error: insertError } = await supabase
-            .from('metrics')
-            .insert({
-              channel_id: channel.id,
-              viewers_count: data.viewers,
-              is_live: data.isLive,
-              peak_viewers_count: newPeak
-            });
-
-          if (insertError) {
-            console.error(`Error inserting metrics for channel ${data.channelName}:`, insertError);
-          } else {
-            console.log(`Successfully updated metrics for channel ${data.channelName}`);
-          }
+        if (insertError) {
+          console.error(`Error inserting metrics for channel ${data.channelName}:`, insertError);
+        } else {
+          console.log(`Successfully updated metrics for channel ${data.channelName}`);
         }
-      } catch (error) {
-        console.error(`Error processing batch of channels:`, error);
       }
     }
 
