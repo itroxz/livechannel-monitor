@@ -20,6 +20,7 @@ interface Channel {
   id: string;
   channel_name: string;
   platform: string;
+  channel_id: string;
 }
 
 interface ChannelsListProps {
@@ -31,7 +32,8 @@ interface ChannelsListProps {
 export function ChannelsList({ channels, groupId, onDeleteChannel }: ChannelsListProps) {
   const { metrics } = useMetrics();
 
-  console.log("Todos os metrics:", metrics); // Debug log
+  console.log("Todos os metrics:", metrics);
+  console.log("Todos os canais:", channels);
 
   const getChannelLatestMetric = (channelId: string) => {
     const channelMetrics = metrics
@@ -50,7 +52,8 @@ export function ChannelsList({ channels, groupId, onDeleteChannel }: ChannelsLis
         <div className="grid gap-4">
           {channels.map((channel) => {
             const latestMetric = getChannelLatestMetric(channel.id);
-            console.log(`Canal ${channel.channel_name} métricas:`, latestMetric); // Debug log
+            console.log(`Canal ${channel.channel_name} métricas:`, latestMetric);
+            console.log(`Canal ${channel.channel_name} ID:`, channel.id);
 
             const isLive = latestMetric?.is_live ?? false;
             const viewersCount = latestMetric?.viewers_count ?? 0;
