@@ -8,6 +8,7 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
+  TooltipProps,
 } from "recharts";
 import { format, parseISO } from "date-fns";
 
@@ -19,6 +20,19 @@ interface ViewersChartProps {
   }>;
   timeRange?: number; // em horas
 }
+
+type CustomTooltipProps = TooltipProps<number, string> & {
+  active?: boolean;
+  payload?: Array<{
+    value: number;
+    payload: {
+      timestamp: string;
+      totalViewers: number;
+      channels: Record<string, number>;
+    };
+  }>;
+  label?: string;
+};
 
 export function ViewersChart({ data, timeRange = 1 }: ViewersChartProps) {
   // Filtrar dados pelo intervalo de tempo
@@ -67,7 +81,7 @@ export function ViewersChart({ data, timeRange = 1 }: ViewersChartProps) {
     );
   }
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
     if (active && payload && payload.length > 0) {
       const data = payload[0].payload;
       return (
