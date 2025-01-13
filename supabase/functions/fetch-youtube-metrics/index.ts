@@ -60,6 +60,7 @@ serve(async (req) => {
         const metrics = await fetchLiveStreamData(channelId, YOUTUBE_API_KEY);
         
         if (metrics.isLive) {
+          // Inserir nova métrica
           const { error: metricsError } = await supabase
             .from('metrics')
             .insert({
@@ -72,6 +73,21 @@ serve(async (req) => {
           if (metricsError) {
             console.error(`Erro ao inserir métricas para ${channel.channel_name}:`, metricsError);
             throw metricsError;
+          }
+
+          // Atualizar peak_viewers_count no canal se necessário
+          if (metrics.viewersCount > (channel.peak_viewers_count || 0)) {
+            const { error: updateError } = await supabase
+              .from('channels')
+              .update({ peak_viewers_count: metrics.viewersCount })
+              .eq('id', channel.id);
+
+            if (updateError) {
+              console.error(`Erro ao atualizar peak_viewers_count para ${channel.channel_name}:`, updateError);
+              throw updateError;
+            }
+            
+            console.log(`Atualizado peak_viewers_count para ${channel.channel_name}: ${metrics.viewersCount}`);
           }
           
           console.log(`Canal ${channel.channel_name} tem ${metrics.viewersCount} espectadores`);
