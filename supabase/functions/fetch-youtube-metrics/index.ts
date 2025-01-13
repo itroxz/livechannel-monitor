@@ -10,37 +10,54 @@ async function fetchYouTubeMetrics(channel: any, YOUTUBE_API_KEY: string) {
   console.log(`[${new Date().toISOString()}] Starting metrics fetch for channel: ${channel.channel_name}`);
   
   try {
-    // 1. Get channel ID from channel name
-    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=id&q=${encodeURIComponent(channel.channel_name)}&type=channel&key=${YOUTUBE_API_KEY}`;
-    console.log('Fetching channel ID:', searchUrl);
-    
-    const searchResponse = await fetch(searchUrl);
-    if (!searchResponse.ok) {
-      const errorText = await searchResponse.text();
-      console.error('Channel search error:', errorText);
-      return { isLive: false, viewersCount: 0 };
-    }
-    
-    const searchData = await searchResponse.json();
-    console.log('Channel search response:', searchData);
-    
-    if (!searchData.items?.length) {
-      console.log(`No channel found for ${channel.channel_name}`);
-      return { isLive: false, viewersCount: 0 };
+    // 1. Get channel ID directly from channel name/handle
+    let channelId = channel.channel_name;
+    if (channel.channel_name.startsWith('@')) {
+      // If it's a handle, we need to search for the channel first
+      const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${encodeURIComponent(channel.channel_name)}&key=${YOUTUBE_API_KEY}`;
+      console.log('Searching for channel:', channel.channel_name);
+      
+      const searchResponse = await fetch(searchUrl, {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (!searchResponse.ok) {
+        const errorText = await searchResponse.text();
+        console.error('Channel search error:', errorText);
+        throw new Error(`Failed to search channel: ${errorText}`);
+      }
+      
+      const searchData = await searchResponse.json();
+      console.log('Channel search response:', searchData);
+      
+      if (!searchData.items?.length) {
+        console.log(`No channel found for ${channel.channel_name}`);
+        return { isLive: false, viewersCount: 0 };
+      }
+      
+      channelId = searchData.items[0].id.channelId;
     }
 
-    // 2. Check if channel is streaming
-    const channelId = searchData.items[0].id.channelId;
-    console.log(`Found channel ID for ${channel.channel_name}:`, channelId);
+    console.log(`Using channel ID for ${channel.channel_name}:`, channelId);
     
+    // 2. Check if channel is streaming using search endpoint with eventType=live
     const liveUrl = `https://www.googleapis.com/youtube/v3/search?part=id,snippet&channelId=${channelId}&eventType=live&type=video&key=${YOUTUBE_API_KEY}`;
     console.log('Checking for live streams:', liveUrl);
     
-    const liveResponse = await fetch(liveUrl);
+    const liveResponse = await fetch(liveUrl, {
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      }
+    });
+
     if (!liveResponse.ok) {
       const errorText = await liveResponse.text();
       console.error('Live stream check error:', errorText);
-      return { isLive: false, viewersCount: 0 };
+      throw new Error(`Failed to check live status: ${errorText}`);
     }
     
     const liveData = await liveResponse.json();
@@ -51,18 +68,24 @@ async function fetchYouTubeMetrics(channel: any, YOUTUBE_API_KEY: string) {
       return { isLive: false, viewersCount: 0 };
     }
 
-    // 3. Get live stream statistics
+    // 3. Get live stream statistics using videos endpoint
     const videoId = liveData.items[0].id.videoId;
     console.log(`Found live video ID for ${channel.channel_name}:`, videoId);
     
-    const statsUrl = `https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails&id=${videoId}&key=${YOUTUBE_API_KEY}`;
+    const statsUrl = `https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails,snippet&id=${videoId}&key=${YOUTUBE_API_KEY}`;
     console.log('Fetching stream statistics:', statsUrl);
     
-    const statsResponse = await fetch(statsUrl);
+    const statsResponse = await fetch(statsUrl, {
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      }
+    });
+
     if (!statsResponse.ok) {
       const errorText = await statsResponse.text();
       console.error('Stream statistics error:', errorText);
-      return { isLive: false, viewersCount: 0 };
+      throw new Error(`Failed to fetch stream statistics: ${errorText}`);
     }
     
     const statsData = await statsResponse.json();
@@ -78,7 +101,7 @@ async function fetchYouTubeMetrics(channel: any, YOUTUBE_API_KEY: string) {
     return { isLive: true, viewersCount };
   } catch (error) {
     console.error(`Error fetching metrics for channel ${channel.channel_name}:`, error);
-    return { isLive: false, viewersCount: 0 };
+    throw error;
   }
 }
 
@@ -108,7 +131,7 @@ async function updateMetricsInDatabase(channel: any, metrics: any, supabase: any
 }
 
 serve(async (req) => {
-  console.log('Starting YouTube metrics fetch function');
+  console.log('[YouTube Metrics] Starting function execution');
   
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
