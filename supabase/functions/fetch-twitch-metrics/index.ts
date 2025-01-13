@@ -50,7 +50,6 @@ async function getChannelMetrics(channelId: string, clientId: string, accessToke
     const data = await response.json();
     console.log(`Stream data for channel ${channelId}:`, data);
     
-    // If data.data is empty, the channel is offline
     return {
       is_live: data.data.length > 0,
       viewers_count: data.data[0]?.viewer_count || 0,
@@ -80,16 +79,17 @@ serve(async (req) => {
     // Initialize Supabase client with service role key
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    // Get all channels from the database
+    // Get all Twitch channels from the database
     const { data: channels, error: channelsError } = await supabase
       .from('channels')
-      .select('*');
+      .select('*')
+      .eq('platform', 'twitch');
 
     if (channelsError) {
       throw channelsError;
     }
 
-    console.log('Fetching metrics for channels:', channels);
+    console.log('Fetching metrics for Twitch channels:', channels);
 
     // Get Twitch access token
     const accessToken = await getTwitchAccessToken(TWITCH_CLIENT_ID, TWITCH_CLIENT_SECRET);
