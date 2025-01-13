@@ -12,10 +12,10 @@ export function useMetrics() {
         .order("timestamp", { ascending: false });
       
       if (error) throw error;
-      console.log("Raw metrics data:", data);
+      console.log("Dados brutos das métricas:", data);
       return data as Metric[];
     },
-    refetchInterval: 30000,
+    refetchInterval: 30000, // Atualiza a cada 30 segundos
   });
 
   const getLatestMetrics = () => {
@@ -39,7 +39,8 @@ export function useMetrics() {
     const liveChannels = relevantMetrics.filter(m => m.is_live);
     const totalViewers = liveChannels.reduce((sum, m) => sum + m.viewers_count, 0);
     
-    console.log("Calculating viewer stats:", {
+    console.log("Calculando estatísticas de visualização:", {
+      metricsCount: metrics.length,
       relevantMetrics,
       liveChannels,
       totalViewers

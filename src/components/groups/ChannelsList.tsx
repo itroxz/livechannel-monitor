@@ -40,18 +40,27 @@ interface ChannelsListProps {
 export function ChannelsList({ channels, groupId, onDeleteChannel }: ChannelsListProps) {
   const { metrics } = useMetrics();
 
-  console.log("Todos os metrics:", metrics);
-  console.log("Todos os canais:", channels);
+  console.log("Métricas disponíveis:", metrics);
+  console.log("Canais na lista:", channels);
 
   const getChannelLatestMetric = (channelId: string) => {
-    if (!metrics || metrics.length === 0) return null;
+    if (!metrics || metrics.length === 0) {
+      console.log(`Nenhuma métrica encontrada para o canal ${channelId}`);
+      return null;
+    }
 
     const channelMetrics = metrics
       .filter(metric => metric.channel_id === channelId)
       .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
-    console.log(`Métricas para o canal ${channelId}:`, channelMetrics);
-    return channelMetrics.length > 0 ? channelMetrics[0] : null;
+    console.log(`Métricas filtradas para o canal ${channelId}:`, channelMetrics);
+    
+    if (channelMetrics.length > 0) {
+      console.log(`Última métrica para o canal ${channelId}:`, channelMetrics[0]);
+      return channelMetrics[0];
+    }
+    
+    return null;
   };
 
   return (
@@ -63,8 +72,11 @@ export function ChannelsList({ channels, groupId, onDeleteChannel }: ChannelsLis
         <div className="grid gap-4">
           {channels.map((channel) => {
             const latestMetric = getChannelLatestMetric(channel.id);
-            console.log(`Canal ${channel.channel_name} métricas:`, latestMetric);
-            console.log(`Canal ${channel.channel_name} ID:`, channel.id);
+            console.log(`Processando canal ${channel.channel_name}:`, {
+              id: channel.id,
+              latestMetric,
+              peakViewers: channel.peak_viewers_count
+            });
 
             const isLive = latestMetric?.is_live ?? false;
             const viewersCount = latestMetric?.viewers_count ?? 0;
