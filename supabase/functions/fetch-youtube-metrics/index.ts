@@ -55,7 +55,7 @@ async function fetchYouTubeChannelData(channelNames: string[], apiKey: string) {
           
           // Get live stream details including viewer count
           const videoResponse = await fetch(
-            `https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails&id=${liveStream.id.videoId}&key=${apiKey}`
+            `https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails,statistics&id=${liveStream.id.videoId}&key=${apiKey}`
           );
 
           if (!videoResponse.ok) {
@@ -64,7 +64,14 @@ async function fetchYouTubeChannelData(channelNames: string[], apiKey: string) {
           }
 
           const videoData = await videoResponse.json();
-          const concurrentViewers = videoData.items?.[0]?.liveStreamingDetails?.concurrentViewers;
+          const videoDetails = videoData.items?.[0];
+          const concurrentViewers = videoDetails?.liveStreamingDetails?.concurrentViewers || 
+                                  videoDetails?.statistics?.viewCount || 0;
+
+          console.log(`Channel ${channelName} live stream details:`, {
+            concurrentViewers,
+            videoDetails
+          });
 
           if (concurrentViewers) {
             results.push({
@@ -140,6 +147,29 @@ serve(async (req) => {
           const channel = channels.find(c => c.channel_name === data.channelName);
           if (!channel) continue;
 
+          // Get the current peak viewers for this channel
+          const { data: currentMetrics, error: metricsError } = await supabase
+            .from('metrics')
+            .select('peak_viewers_count')
+            .eq('channel_id', channel.id)
+            .order('peak_viewers_count', { ascending: false })
+            .limit(1);
+
+          if (metricsError) {
+            console.error(`Error fetching current metrics for channel ${data.channelName}:`, metricsError);
+            continue;
+          }
+
+          const currentPeak = currentMetrics?.[0]?.peak_viewers_count || 0;
+          const newPeak = Math.max(currentPeak, data.viewers);
+
+          console.log(`Channel ${data.channelName} metrics:`, {
+            currentPeak,
+            newViewers: data.viewers,
+            newPeak,
+            isLive: data.isLive
+          });
+
           // Insert metrics into the database
           const { error: insertError } = await supabase
             .from('metrics')
@@ -147,6 +177,7 @@ serve(async (req) => {
               channel_id: channel.id,
               viewers_count: data.viewers,
               is_live: data.isLive,
+              peak_viewers_count: newPeak
             });
 
           if (insertError) {
