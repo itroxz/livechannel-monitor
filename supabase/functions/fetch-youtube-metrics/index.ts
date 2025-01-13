@@ -7,6 +7,10 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Cache para armazenar resultados por 30 segundos
+const cache = new Map<string, { data: any, timestamp: number }>();
+const CACHE_DURATION = 30000; // 30 segundos em milissegundos
+
 serve(async (req) => {
   console.log('[YouTube Metrics] Iniciando execução da função');
   
@@ -47,6 +51,16 @@ serve(async (req) => {
     const results = await Promise.all(channels.map(async (channel) => {
       try {
         console.log(`Processando canal: ${channel.channel_name}`);
+        
+        // Verificar cache
+        const cacheKey = `channel_${channel.id}`;
+        const now = Date.now();
+        const cached = cache.get(cacheKey);
+        
+        if (cached && (now - cached.timestamp) < CACHE_DURATION) {
+          console.log(`Usando dados em cache para ${channel.channel_name}`);
+          return cached.data;
+        }
         
         const channelId = await validateYouTubeChannel(channel.channel_name, YOUTUBE_API_KEY);
         if (!channelId) {
@@ -93,7 +107,15 @@ serve(async (req) => {
           console.log(`Canal ${channel.channel_name} tem ${metrics.viewersCount} espectadores`);
         }
         
-        return { channel: channel.channel_name, success: true, metrics };
+        const result = { channel: channel.channel_name, success: true, metrics };
+        
+        // Armazenar no cache
+        cache.set(cacheKey, {
+          data: result,
+          timestamp: now
+        });
+        
+        return result;
       } catch (error) {
         console.error(`Erro processando canal ${channel.channel_name}:`, error);
         return { 
