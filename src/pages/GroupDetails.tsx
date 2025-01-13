@@ -1,4 +1,4 @@
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useGroupData } from "@/hooks/useGroupData";
 import { GroupHeader } from "@/components/groups/GroupHeader";
 import { GroupStats } from "@/components/groups/GroupStats";
@@ -11,6 +11,7 @@ import { toast } from "sonner";
 
 export default function GroupDetails() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   if (!id) throw new Error("No group ID provided");
 
   const { group, channels, metrics } = useGroupData(id);
@@ -62,9 +63,31 @@ export default function GroupDetails() {
     };
   });
 
+  const handleDeleteGroup = async () => {
+    try {
+      const { error } = await supabase
+        .from("groups")
+        .delete()
+        .eq("id", id);
+
+      if (error) throw error;
+      
+      navigate("/");
+      toast.success("Grupo excluído com sucesso!");
+    } catch (error) {
+      console.error("Error deleting group:", error);
+      toast.error("Erro ao excluir grupo");
+    }
+  };
+
   return (
     <div className="space-y-8">
-      <GroupHeader group={group} />
+      <GroupHeader 
+        groupId={id}
+        groupName={group.name}
+        onBack={() => navigate("/")}
+        onDeleteGroup={handleDeleteGroup}
+      />
       <GroupStats
         totalChannels={channels.length}
         liveChannels={liveChannelsCount}
