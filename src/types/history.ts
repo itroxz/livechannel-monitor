@@ -4,6 +4,7 @@ export interface Channel {
   id: string;
   channel_name: string;
   group_id: string;
+  peak_viewers_count: number;
 }
 
 export interface Group {
@@ -12,9 +13,9 @@ export interface Group {
 }
 
 export interface Metric {
+  id: string;
   channel_id: string;
   viewers_count: number;
   is_live: boolean;
   timestamp: string;
-  peak_viewers_count: number;
 }

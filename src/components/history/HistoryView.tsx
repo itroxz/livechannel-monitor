@@ -99,8 +99,8 @@ export function HistoryView() {
         Canal: channel?.channel_name || "Desconhecido",
         "Data e Hora": format(new Date(metric.timestamp), "dd/MM/yyyy HH:mm:ss"),
         "Viewers": metric.viewers_count,
-        "Pico de Viewers": metric.peak_viewers_count,
-        "Ao Vivo": metric.is_live ? "Sim" : "Não"
+        "Ao Vivo": metric.is_live ? "Sim" : "Não",
+        "Pico de Viewers": channel?.peak_viewers_count || 0
       };
     });
 

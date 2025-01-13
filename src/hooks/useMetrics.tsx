@@ -1,13 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-
-interface Metric {
-  channel_id: string;
-  viewers_count: number;
-  peak_viewers_count: number;
-  is_live: boolean;
-  timestamp: string;
-}
+import type { Metric } from "@/types/history";
 
 export function useMetrics() {
   const { data: metrics = [] } = useQuery({
