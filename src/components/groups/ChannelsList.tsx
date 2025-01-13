@@ -12,7 +12,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { ChannelFormDialog } from "@/components/groups/ChannelFormDialog";
-import { Users, Pen, Trash, TrendingUp } from "lucide-react";
+import { Pen, Trash, TrendingUp, Youtube, Twitch } from "lucide-react";
 import { useMetrics } from "@/hooks/useMetrics";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -22,6 +22,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 interface Channel {
   id: string;
@@ -63,8 +64,30 @@ export function ChannelsList({ channels, groupId, onDeleteChannel }: ChannelsLis
     return null;
   };
 
+  const getPlatformIcon = (platform: string) => {
+    switch (platform.toLowerCase()) {
+      case 'youtube':
+        return <Youtube className="h-4 w-4 text-[#FF0000]" />;
+      case 'twitch':
+        return <Twitch className="h-4 w-4 text-[#9146FF]" />;
+      default:
+        return null;
+    }
+  };
+
+  const getPlatformStyles = (platform: string) => {
+    switch (platform.toLowerCase()) {
+      case 'youtube':
+        return 'hover:bg-red-50 border-red-100';
+      case 'twitch':
+        return 'hover:bg-purple-50 border-purple-100';
+      default:
+        return 'hover:bg-gray-50 border-gray-100';
+    }
+  };
+
   return (
-    <Card>
+    <Card className="bg-white/50 backdrop-blur-sm">
       <CardHeader>
         <CardTitle>Canais</CardTitle>
       </CardHeader>
@@ -86,35 +109,38 @@ export function ChannelsList({ channels, groupId, onDeleteChannel }: ChannelsLis
             return (
               <div
                 key={channel.id}
-                className="flex items-center justify-between p-4 border rounded-lg"
+                className={cn(
+                  "flex items-center justify-between p-4 rounded-lg border transition-colors duration-200",
+                  getPlatformStyles(channel.platform)
+                )}
               >
                 <div className="flex items-center gap-4">
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                  <span>{channel.channel_name}</span>
-                  <span className="text-sm text-muted-foreground">
-                    {channel.platform}
-                  </span>
+                  {getPlatformIcon(channel.platform)}
+                  <span className="font-medium">{channel.channel_name}</span>
                   {isLive ? (
                     <div className="flex items-center gap-2">
-                      <Badge variant="default" className="bg-green-500">
-                        {viewersCount} assistindo
+                      <Badge variant="default" className={cn(
+                        "bg-gradient-to-r shadow-sm",
+                        channel.platform.toLowerCase() === 'youtube' ? "from-red-500 to-red-600" : "from-purple-500 to-purple-600"
+                      )}>
+                        {viewersCount.toLocaleString()} assistindo
                       </Badge>
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger>
-                            <Badge variant="outline" className="flex items-center gap-1">
+                            <Badge variant="outline" className="flex items-center gap-1 bg-white">
                               <TrendingUp className="h-3 w-3" />
-                              {peakViewersCount}
+                              {peakViewersCount.toLocaleString()}
                             </Badge>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>Pico de {peakViewersCount} viewers em {peakDate}</p>
+                            <p>Pico de {peakViewersCount.toLocaleString()} viewers em {peakDate}</p>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
                     </div>
                   ) : (
-                    <Badge variant="secondary">Offline</Badge>
+                    <Badge variant="secondary" className="bg-gray-100 text-gray-600">Offline</Badge>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
@@ -122,14 +148,14 @@ export function ChannelsList({ channels, groupId, onDeleteChannel }: ChannelsLis
                     groupId={groupId}
                     channelId={channel.id}
                     trigger={
-                      <Button variant="ghost" size="icon">
+                      <Button variant="ghost" size="icon" className="hover:bg-gray-100">
                         <Pen className="h-4 w-4" />
                       </Button>
                     }
                   />
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="icon">
+                      <Button variant="ghost" size="icon" className="hover:bg-gray-100">
                         <Trash className="h-4 w-4" />
                       </Button>
                     </AlertDialogTrigger>
