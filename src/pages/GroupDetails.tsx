@@ -40,8 +40,8 @@ export default function GroupDetails() {
     // Primeira chamada imediata
     fetchYoutubeMetrics();
 
-    // Configurar chamadas periódicas a cada 60 segundos
-    const interval = setInterval(fetchYoutubeMetrics, 60000);
+    // Configurar chamadas periódicas a cada 30 segundos
+    const interval = setInterval(fetchYoutubeMetrics, 30000);
 
     // Cleanup ao desmontar o componente
     return () => clearInterval(interval);
