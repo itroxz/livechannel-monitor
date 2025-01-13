@@ -9,6 +9,7 @@ import { ViewersChart } from "@/components/groups/ViewersChart";
 import { ChannelsList } from "@/components/groups/ChannelsList";
 import { Plus, ArrowLeft, MoreHorizontal, Pen, Trash } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useMetrics } from "@/hooks/useMetrics";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,6 +35,7 @@ const GroupDetails = () => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [timeRange, setTimeRange] = useState<number>(1);
+  const { calculateViewerStats } = useMetrics();
 
   const { data: group } = useQuery({
     queryKey: ["group", id],
@@ -82,6 +84,7 @@ const GroupDetails = () => {
         .order("timestamp", { ascending: true });
 
       if (error) throw error;
+      console.log("Fetched metrics:", data);
       return data;
     },
     enabled: channels.length > 0,
@@ -139,31 +142,11 @@ const GroupDetails = () => {
     }
   };
 
-  // Obter as métricas mais recentes para cada canal
-  const getLatestMetricsByChannel = () => {
-    const latestMetrics = new Map();
-    
-    metrics.forEach((metric) => {
-      const existing = latestMetrics.get(metric.channel_id);
-      if (!existing || new Date(metric.timestamp) > new Date(existing.timestamp)) {
-        latestMetrics.set(metric.channel_id, metric);
-      }
-    });
-    
-    return Array.from(latestMetrics.values());
-  };
-
-  // Calcular estatísticas usando as métricas mais recentes
-  const latestMetrics = getLatestMetricsByChannel();
-  const liveChannels = latestMetrics.filter(m => m.is_live);
-  const totalViewers = liveChannels.reduce((sum, m) => sum + m.viewers_count, 0);
-
-  console.log("Latest metrics:", latestMetrics);
-  console.log("Live channels:", liveChannels);
-  console.log("Total viewers:", totalViewers);
+  const channelIds = channels.map(channel => channel.id);
+  const stats = calculateViewerStats(channelIds);
+  console.log("Group stats:", stats);
 
   const chartData = metrics
-    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
     .map((metric) => {
       const channel = channels.find(c => c.id === metric.channel_id);
       return {
@@ -172,6 +155,8 @@ const GroupDetails = () => {
         channelName: channel?.channel_name || 'Unknown',
       };
     });
+
+  console.log("Chart data:", chartData);
 
   return (
     <div className="p-8">
@@ -242,8 +227,8 @@ const GroupDetails = () => {
 
       <GroupStats
         totalChannels={channels.length}
-        liveChannels={liveChannels.length}
-        totalViewers={totalViewers}
+        liveChannels={stats.liveChannelsCount}
+        totalViewers={stats.totalViewers}
       />
 
       <div className="mb-8">
