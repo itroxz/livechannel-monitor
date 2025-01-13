@@ -6,112 +6,76 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-async function fetchYouTubeMetrics(channel: any, YOUTUBE_API_KEY: string) {
-  console.log(`[${new Date().toISOString()}] Iniciando busca de métricas para canal: ${channel.channel_name}`);
+async function validateYouTubeChannel(channelName: string, apiKey: string) {
+  console.log(`[${new Date().toISOString()}] Validando canal do YouTube: ${channelName}`);
   
-  try {
-    let channelId = channel.channel_name;
-    if (channel.channel_name.startsWith('@')) {
-      const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${encodeURIComponent(channel.channel_name)}&key=${YOUTUBE_API_KEY}`;
-      console.log(`[${new Date().toISOString()}] Buscando canal:`, channel.channel_name);
-      
-      const searchResponse = await fetch(searchUrl, {
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        }
-      });
-
-      const searchData = await searchResponse.json();
-      
-      if (!searchResponse.ok) {
-        // Verifica especificamente o erro de API desabilitada
-        if (searchData.error?.status === "PERMISSION_DENIED" && 
-            searchData.error?.message?.includes("API") && 
-            searchData.error?.message?.includes("disabled")) {
-          console.error(`[${new Date().toISOString()}] YouTube API está desabilitada:`, searchData.error);
-          throw new Error("YouTube API não está habilitada. Por favor, habilite em: " + 
-            searchData.error?.details?.[0]?.metadata?.activationUrl || 
-            "https://console.developers.google.com/apis/api/youtube.googleapis.com/overview");
-        }
-        
-        console.error(`[${new Date().toISOString()}] Erro na busca do canal:`, searchData);
-        throw new Error(`Falha ao buscar canal: ${JSON.stringify(searchData)}`);
-      }
-      
-      if (!searchData.items?.length) {
-        console.log(`[${new Date().toISOString()}] Nenhum canal encontrado para ${channel.channel_name}`);
-        return { isLive: false, viewersCount: 0 };
-      }
-      
-      channelId = searchData.items[0].id.channelId;
-      console.log(`[${new Date().toISOString()}] ID do canal encontrado:`, channelId);
-    }
-
-    const liveUrl = `https://www.googleapis.com/youtube/v3/search?part=id,snippet&channelId=${channelId}&eventType=live&type=video&key=${YOUTUBE_API_KEY}`;
-    console.log(`[${new Date().toISOString()}] Verificando streams ao vivo para canal ${channel.channel_name}`);
+  let channelId = channelName;
+  if (channelName.startsWith('@')) {
+    const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=channel&q=${encodeURIComponent(channelName)}&key=${apiKey}`;
+    console.log(`[${new Date().toISOString()}] URL de busca do canal:`, searchUrl);
     
-    const liveResponse = await fetch(liveUrl, {
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      }
-    });
-
-    if (!liveResponse.ok) {
-      const errorData = await liveResponse.json();
-      console.error(`[${new Date().toISOString()}] Erro ao verificar status ao vivo:`, errorData);
-      throw new Error(`Falha ao verificar status ao vivo: ${JSON.stringify(errorData)}`);
+    const searchResponse = await fetch(searchUrl);
+    const searchData = await searchResponse.json();
+    
+    if (!searchResponse.ok) {
+      console.error(`[${new Date().toISOString()}] Erro na busca do canal:`, searchData);
+      throw new Error(`Falha ao buscar canal: ${JSON.stringify(searchData)}`);
     }
     
-    const liveData = await liveResponse.json();
-    console.log(`[${new Date().toISOString()}] Resposta da verificação ao vivo:`, liveData);
-
-    if (!liveData.items?.length) {
-      console.log(`[${new Date().toISOString()}] Nenhuma stream ao vivo encontrada para ${channel.channel_name}`);
-      return { isLive: false, viewersCount: 0 };
-    }
-
-    const videoId = liveData.items[0].id.videoId;
-    console.log(`[${new Date().toISOString()}] ID do vídeo ao vivo encontrado para ${channel.channel_name}:`, videoId);
-    
-    const statsUrl = `https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails,snippet&id=${videoId}&key=${YOUTUBE_API_KEY}`;
-    console.log(`[${new Date().toISOString()}] Buscando estatísticas da stream`);
-    
-    const statsResponse = await fetch(statsUrl, {
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      }
-    });
-
-    if (!statsResponse.ok) {
-      const errorData = await statsResponse.json();
-      console.error(`[${new Date().toISOString()}] Erro ao buscar estatísticas da stream:`, errorData);
-      throw new Error(`Falha ao buscar estatísticas da stream: ${JSON.stringify(errorData)}`);
+    if (!searchData.items?.length) {
+      console.log(`[${new Date().toISOString()}] Canal não encontrado: ${channelName}`);
+      return null;
     }
     
-    const statsData = await statsResponse.json();
-    console.log(`[${new Date().toISOString()}] Resposta das estatísticas da stream:`, statsData);
-
-    if (!statsData.items?.length) {
-      console.log(`[${new Date().toISOString()}] Nenhuma estatística encontrada para ${channel.channel_name}`);
-      return { isLive: false, viewersCount: 0 };
-    }
-
-    const viewersCount = parseInt(statsData.items[0].liveStreamingDetails?.concurrentViewers || '0');
-    console.log(`[${new Date().toISOString()}] Canal ${channel.channel_name} tem ${viewersCount} espectadores`);
-    return { isLive: true, viewersCount };
-  } catch (error) {
-    console.error(`[${new Date().toISOString()}] Erro processando canal ${channel.channel_name}:`, error);
-    
-    if (error instanceof Error && 
-        error.message.includes("YouTube API não está habilitada")) {
-      throw error;
-    }
-    
-    throw error;
+    channelId = searchData.items[0].id.channelId;
+    console.log(`[${new Date().toISOString()}] ID do canal encontrado:`, channelId);
   }
+  
+  return channelId;
+}
+
+async function fetchLiveStreamData(channelId: string, apiKey: string) {
+  console.log(`[${new Date().toISOString()}] Buscando dados da live para canal ID: ${channelId}`);
+  
+  const liveUrl = `https://www.googleapis.com/youtube/v3/search?part=id,snippet&channelId=${channelId}&eventType=live&type=video&key=${apiKey}`;
+  console.log(`[${new Date().toISOString()}] URL da busca de live:`, liveUrl);
+  
+  const liveResponse = await fetch(liveUrl);
+  const liveData = await liveResponse.json();
+  
+  if (!liveResponse.ok) {
+    console.error(`[${new Date().toISOString()}] Erro ao buscar status da live:`, liveData);
+    throw new Error(`Falha ao verificar status da live: ${JSON.stringify(liveData)}`);
+  }
+  
+  if (!liveData.items?.length) {
+    console.log(`[${new Date().toISOString()}] Nenhuma live encontrada para o canal ${channelId}`);
+    return { isLive: false, viewersCount: 0 };
+  }
+  
+  const videoId = liveData.items[0].id.videoId;
+  console.log(`[${new Date().toISOString()}] ID do vídeo ao vivo:`, videoId);
+  
+  const statsUrl = `https://www.googleapis.com/youtube/v3/videos?part=liveStreamingDetails,snippet&id=${videoId}&key=${apiKey}`;
+  console.log(`[${new Date().toISOString()}] URL das estatísticas:`, statsUrl);
+  
+  const statsResponse = await fetch(statsUrl);
+  const statsData = await statsResponse.json();
+  
+  if (!statsResponse.ok) {
+    console.error(`[${new Date().toISOString()}] Erro ao buscar estatísticas:`, statsData);
+    throw new Error(`Falha ao buscar estatísticas: ${JSON.stringify(statsData)}`);
+  }
+  
+  if (!statsData.items?.length) {
+    console.log(`[${new Date().toISOString()}] Nenhuma estatística encontrada`);
+    return { isLive: false, viewersCount: 0 };
+  }
+  
+  const viewersCount = parseInt(statsData.items[0].liveStreamingDetails?.concurrentViewers || '0');
+  console.log(`[${new Date().toISOString()}] Número de espectadores:`, viewersCount);
+  
+  return { isLive: true, viewersCount };
 }
 
 serve(async (req) => {
@@ -124,10 +88,9 @@ serve(async (req) => {
   try {
     const YOUTUBE_API_KEY = Deno.env.get('YOUTUBE_API_KEY');
     if (!YOUTUBE_API_KEY) {
-      throw new Error('Variável de ambiente YOUTUBE_API_KEY não encontrada');
+      throw new Error('Chave da API do YouTube não encontrada nas variáveis de ambiente');
     }
 
-    console.log('Buscando canais do YouTube no banco de dados...');
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') || '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
@@ -143,7 +106,7 @@ serve(async (req) => {
       throw channelsError;
     }
 
-    console.log(`Encontrados ${channels?.length || 0} canais do YouTube`);
+    console.log(`Processando ${channels?.length || 0} canais do YouTube`);
 
     if (!channels || channels.length === 0) {
       return new Response(
@@ -152,11 +115,20 @@ serve(async (req) => {
       );
     }
 
-    console.log('Processando canais...');
     const results = await Promise.all(channels.map(async (channel) => {
       try {
         console.log(`Processando canal: ${channel.channel_name}`);
-        const metrics = await fetchYouTubeMetrics(channel, YOUTUBE_API_KEY);
+        
+        const channelId = await validateYouTubeChannel(channel.channel_name, YOUTUBE_API_KEY);
+        if (!channelId) {
+          return { 
+            channel: channel.channel_name, 
+            success: false, 
+            error: 'Canal não encontrado' 
+          };
+        }
+        
+        const metrics = await fetchLiveStreamData(channelId, YOUTUBE_API_KEY);
         
         if (metrics.isLive) {
           const { error: metricsError } = await supabase
@@ -172,6 +144,8 @@ serve(async (req) => {
             console.error(`Erro ao inserir métricas para ${channel.channel_name}:`, metricsError);
             throw metricsError;
           }
+          
+          console.log(`Canal ${channel.channel_name} tem ${metrics.viewersCount} espectadores`);
         }
         
         return { channel: channel.channel_name, success: true, metrics };
@@ -185,7 +159,6 @@ serve(async (req) => {
       }
     }));
 
-    console.log('Resultados do processamento dos canais:', results);
     return new Response(
       JSON.stringify({ 
         message: 'Métricas atualizadas com sucesso', 
@@ -198,21 +171,14 @@ serve(async (req) => {
   } catch (error) {
     console.error('Erro na função fetch-youtube-metrics:', error);
     
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    const isApiDisabled = errorMessage.includes("YouTube API não está habilitada");
-    
     return new Response(
       JSON.stringify({ 
-        error: isApiDisabled ? {
-          message: "YouTube API não está habilitada",
-          details: "Por favor, habilite a YouTube Data API v3 no Console do Google Cloud e aguarde alguns minutos para as alterações serem propagadas.",
-          activationUrl: "https://console.developers.google.com/apis/api/youtube.googleapis.com/overview"
-        } : errorMessage,
+        error: error instanceof Error ? error.message : String(error),
         timestamp: new Date().toISOString()
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }, 
-        status: isApiDisabled ? 503 : 500 
+        status: 500 
       }
     );
   }
