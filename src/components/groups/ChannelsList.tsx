@@ -28,6 +28,7 @@ interface Channel {
   channel_name: string;
   platform: string;
   channel_id: string;
+  peak_viewers_count: number;
 }
 
 interface ChannelsListProps {
@@ -67,7 +68,7 @@ export function ChannelsList({ channels, groupId, onDeleteChannel }: ChannelsLis
 
             const isLive = latestMetric?.is_live ?? false;
             const viewersCount = latestMetric?.viewers_count ?? 0;
-            const peakViewersCount = latestMetric?.peak_viewers_count ?? 0;
+            const peakViewersCount = channel.peak_viewers_count;
             const peakDate = latestMetric?.timestamp ? format(new Date(latestMetric.timestamp), "dd/MM/yyyy HH:mm") : '';
 
             return (
