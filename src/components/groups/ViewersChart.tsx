@@ -7,73 +7,25 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  Legend,
-  TooltipProps,
   ReferenceLine,
 } from "recharts";
 import { format, parseISO } from "date-fns";
+import { ChartTooltip } from "./ChartTooltip";
+import { filterDataByTimeRange, aggregateChartData } from "./ChartUtils";
+import { ViewerData } from "./types";
 
 interface ViewersChartProps {
-  data: Array<{
-    timestamp: string;
-    viewers: number;
-    channelName: string;
-  }>;
+  data: ViewerData[];
   timeRange?: number;
 }
 
-interface ChartData {
-  timestamp: string;
-  totalViewers: number;
-  channels: Record<string, number>;
-}
-
-type CustomTooltipProps = TooltipProps<number, string> & {
-  active?: boolean;
-  payload?: Array<{
-    value: number;
-    payload: ChartData;
-  }>;
-  label?: string;
-};
-
 export function ViewersChart({ data, timeRange = 1 }: ViewersChartProps) {
-  const filterDataByTimeRange = () => {
-    const now = new Date();
-    const cutoffTime = new Date(now.getTime() - timeRange * 60 * 60 * 1000);
-    return data.filter(item => new Date(item.timestamp) > cutoffTime);
-  };
-
-  const aggregateData = () => {
-    const filteredData = filterDataByTimeRange();
-    console.log("Dados filtrados para o gráfico:", filteredData);
-    
-    const aggregatedByMinute: Record<string, ChartData> = {};
-
-    filteredData.forEach((item) => {
-      const minute = format(parseISO(item.timestamp), "yyyy-MM-dd HH:mm:00");
-      
-      if (!aggregatedByMinute[minute]) {
-        aggregatedByMinute[minute] = {
-          timestamp: minute,
-          totalViewers: 0,
-          channels: {},
-        };
-      }
-      
-      aggregatedByMinute[minute].channels[item.channelName] = item.viewers;
-      aggregatedByMinute[minute].totalViewers = Object.values(aggregatedByMinute[minute].channels).reduce((a, b) => a + b, 0);
-    });
-
-    const sortedData = Object.values(aggregatedByMinute).sort((a, b) => 
-      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-    );
-    
-    console.log("Dados agregados para o gráfico:", sortedData);
-    return sortedData;
-  };
-
-  const chartData = aggregateData();
+  const filteredData = filterDataByTimeRange(data, timeRange);
+  console.log("Dados filtrados para o gráfico:", filteredData);
+  
+  const chartData = aggregateChartData(filteredData);
+  console.log("Dados agregados para o gráfico:", chartData);
+  
   const peakViewers = chartData.length > 0 
     ? Math.max(...chartData.map(d => d.totalViewers))
     : 0;
@@ -85,26 +37,6 @@ export function ViewersChart({ data, timeRange = 1 }: ViewersChartProps) {
       </div>
     );
   }
-
-  const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
-    if (active && payload && payload.length > 0) {
-      const data = payload[0].payload;
-      return (
-        <div className="bg-background border rounded-lg p-3 shadow-lg">
-          <p className="font-medium">{format(parseISO(label || ''), "HH:mm")}</p>
-          <p className="text-sm text-muted-foreground mt-1">Total: {data.totalViewers} viewers</p>
-          <div className="mt-2 space-y-1">
-            {Object.entries(data.channels).map(([channel, viewers]) => (
-              <p key={channel} className="text-sm">
-                {channel}: {viewers.toString()} viewers
-              </p>
-            ))}
-          </div>
-        </div>
-      );
-    }
-    return null;
-  };
 
   return (
     <div className="space-y-4">
@@ -130,7 +62,7 @@ export function ViewersChart({ data, timeRange = 1 }: ViewersChartProps) {
               tickFormatter={(value) => format(parseISO(value), "HH:mm")}
             />
             <YAxis />
-            <Tooltip content={<CustomTooltip />} />
+            <Tooltip content={<ChartTooltip />} />
             <ReferenceLine 
               y={peakViewers} 
               stroke="#ff0000" 
