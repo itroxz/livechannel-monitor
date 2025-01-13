@@ -91,6 +91,11 @@ const GroupDetails = () => {
     refetchInterval: 30000,
   });
 
+  // Calculate peak viewers from metrics
+  const peakViewers = metrics.length > 0
+    ? Math.max(...metrics.map(m => m.viewers_count))
+    : 0;
+
   // Configurar real-time updates para canais
   useEffect(() => {
     if (!id) return;
@@ -229,6 +234,7 @@ const GroupDetails = () => {
         totalChannels={channels.length}
         liveChannels={stats.liveChannelsCount}
         totalViewers={stats.totalViewers}
+        peakViewers={peakViewers}
       />
 
       <div className="mb-8">
