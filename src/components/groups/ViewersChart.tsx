@@ -21,15 +21,17 @@ interface ViewersChartProps {
   timeRange?: number;
 }
 
+interface ChartData {
+  timestamp: string;
+  totalViewers: number;
+  channels: Record<string, number>;
+}
+
 type CustomTooltipProps = TooltipProps<number, string> & {
   active?: boolean;
   payload?: Array<{
     value: number;
-    payload: {
-      timestamp: string;
-      totalViewers: number;
-      channels: Record<string, number>;
-    };
+    payload: ChartData;
   }>;
   label?: string;
 };
@@ -45,11 +47,7 @@ export function ViewersChart({ data, timeRange = 1 }: ViewersChartProps) {
     const filteredData = filterDataByTimeRange();
     console.log("Filtered data:", filteredData);
     
-    const aggregatedByMinute: Record<string, { 
-      timestamp: string;
-      totalViewers: number;
-      channels: Record<string, number>;
-    }> = {};
+    const aggregatedByMinute: Record<string, ChartData> = {};
 
     filteredData.forEach((item) => {
       const minute = format(parseISO(item.timestamp), "yyyy-MM-dd HH:mm:00");
@@ -94,7 +92,7 @@ export function ViewersChart({ data, timeRange = 1 }: ViewersChartProps) {
           <div className="mt-2 space-y-1">
             {Object.entries(data.channels).map(([channel, viewers]) => (
               <p key={channel} className="text-sm">
-                {channel}: {viewers} viewers
+                {channel}: {viewers.toString()} viewers
               </p>
             ))}
           </div>
