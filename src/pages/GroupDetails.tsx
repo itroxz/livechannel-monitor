@@ -91,10 +91,17 @@ const GroupDetails = () => {
     refetchInterval: 30000,
   });
 
-  // Calculate peak viewers from metrics
-  const peakViewers = metrics.length > 0
-    ? Math.max(...metrics.map(m => m.viewers_count))
-    : 0;
+  // Calculate peak viewers from metrics within the selected time range
+  const calculatePeakViewers = () => {
+    const now = new Date();
+    const cutoffTime = new Date(now.getTime() - timeRange * 60 * 60 * 1000);
+    const filteredMetrics = metrics.filter(m => new Date(m.timestamp) > cutoffTime);
+    return filteredMetrics.length > 0
+      ? Math.max(...filteredMetrics.map(m => m.viewers_count))
+      : 0;
+  };
+
+  const peakViewers = calculatePeakViewers();
 
   // Configurar real-time updates para canais
   useEffect(() => {
