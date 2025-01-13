@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { GroupFormDialog } from "@/components/groups/GroupFormDialog";
 import { ChannelFormDialog } from "@/components/groups/ChannelFormDialog";
 import { GroupStats } from "@/components/groups/GroupStats";
-import { ViewersChart } from "@/components/groups/ViewersChart";
 import { ChannelsList } from "@/components/groups/ChannelsList";
 import { Plus, ArrowLeft, MoreHorizontal, Pen, Trash } from "lucide-react";
 import { useEffect } from "react";
@@ -157,17 +156,6 @@ const GroupDetails = () => {
   const liveChannels = latestMetrics.filter(m => m.is_live);
   const totalViewers = liveChannels.reduce((sum, m) => sum + m.viewers_count, 0);
 
-  const chartData = metrics
-    .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
-    .map((metric) => {
-      const channel = channels.find(c => c.id === metric.channel_id);
-      return {
-        timestamp: metric.timestamp,
-        viewers: metric.viewers_count,
-        channelName: channel?.channel_name || 'Unknown',
-      };
-    });
-
   return (
     <div className="p-8">
       <div className="flex items-center gap-4 mb-8">
@@ -239,11 +227,6 @@ const GroupDetails = () => {
         totalChannels={channels.length}
         liveChannels={liveChannels.length}
         totalViewers={totalViewers}
-      />
-
-      <ViewersChart 
-        data={chartData} 
-        channels={channels}
       />
 
       <ChannelsList

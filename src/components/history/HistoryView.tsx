@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { ViewersChart } from "@/components/groups/ViewersChart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartLineIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -98,15 +97,6 @@ export function HistoryView() {
     enabled: channels.length > 0,
   });
 
-  const chartData = metrics.map((metric) => {
-    const channel = channels.find((c) => c.id === metric.channel_id);
-    return {
-      timestamp: metric.timestamp,
-      viewers: metric.viewers_count,
-      channelName: channel?.channel_name || "Desconhecido",
-    };
-  });
-
   return (
     <div className="space-y-8">
       <Card>
@@ -190,9 +180,11 @@ export function HistoryView() {
           </div>
         </CardHeader>
         <CardContent>
-          <ViewersChart data={chartData} channels={channels} />
+          <div className="flex justify-center items-center h-[400px] text-muted-foreground">
+            Histórico de visualizações removido
+          </div>
         </CardContent>
       </Card>
     </div>
   );
-}
+};
