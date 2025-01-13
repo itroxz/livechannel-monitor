@@ -28,8 +28,7 @@ export function useMetrics() {
     const latestMetricsByChannel = new Map<string, Metric>();
     
     metrics.forEach((metric) => {
-      const existingMetric = latestMetricsByChannel.get(metric.channel_id);
-      if (!existingMetric || new Date(metric.timestamp) > new Date(existingMetric.timestamp)) {
+      if (!latestMetricsByChannel.has(metric.channel_id)) {
         latestMetricsByChannel.set(metric.channel_id, metric);
       }
     });
@@ -44,9 +43,16 @@ export function useMetrics() {
       : latestMetrics;
 
     const liveChannels = relevantMetrics.filter(m => m.is_live);
+    const totalViewers = liveChannels.reduce((sum, m) => sum + m.viewers_count, 0);
     
+    console.log("Calculating viewer stats:", {
+      relevantMetrics,
+      liveChannels,
+      totalViewers
+    });
+
     return {
-      totalViewers: liveChannels.reduce((sum, m) => sum + m.viewers_count, 0),
+      totalViewers,
       liveChannelsCount: liveChannels.length,
       latestMetrics: relevantMetrics,
     };

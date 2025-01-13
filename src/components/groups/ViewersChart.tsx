@@ -70,7 +70,7 @@ export function ViewersChart({ data, timeRange = 1 }: ViewersChartProps) {
       new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     );
     
-    console.log("Aggregated data:", sortedData);
+    console.log("Aggregated chart data:", sortedData);
     return sortedData;
   };
 
@@ -94,7 +94,7 @@ export function ViewersChart({ data, timeRange = 1 }: ViewersChartProps) {
           <div className="mt-2 space-y-1">
             {Object.entries(data.channels).map(([channel, viewers]) => (
               <p key={channel} className="text-sm">
-                {channel}: {viewers.toString()} viewers
+                {channel}: {viewers} viewers
               </p>
             ))}
           </div>

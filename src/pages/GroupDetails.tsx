@@ -33,7 +33,7 @@ const GroupDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [timeRange, setTimeRange] = useState<number>(1); // Default 1 hora
+  const [timeRange, setTimeRange] = useState<number>(1);
 
   const { data: group } = useQuery({
     queryKey: ["group", id],
@@ -157,6 +157,10 @@ const GroupDetails = () => {
   const latestMetrics = getLatestMetricsByChannel();
   const liveChannels = latestMetrics.filter(m => m.is_live);
   const totalViewers = liveChannels.reduce((sum, m) => sum + m.viewers_count, 0);
+
+  console.log("Latest metrics:", latestMetrics);
+  console.log("Live channels:", liveChannels);
+  console.log("Total viewers:", totalViewers);
 
   const chartData = metrics
     .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
