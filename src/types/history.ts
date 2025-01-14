@@ -8,6 +8,7 @@ export interface Channel {
   peak_viewers_timestamp: string | null;
   platform: string;
   channel_id: string;
+  created_at: string;
 }
 
 export interface Group {
