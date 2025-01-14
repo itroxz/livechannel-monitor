@@ -17,6 +17,7 @@ export type Database = {
           group_id: string | null
           id: string
           peak_viewers_count: number
+          peak_viewers_timestamp: string | null
           platform: string
         }
         Insert: {
@@ -26,6 +27,7 @@ export type Database = {
           group_id?: string | null
           id?: string
           peak_viewers_count?: number
+          peak_viewers_timestamp?: string | null
           platform: string
         }
         Update: {
@@ -35,6 +37,7 @@ export type Database = {
           group_id?: string | null
           id?: string
           peak_viewers_count?: number
+          peak_viewers_timestamp?: string | null
           platform?: string
         }
         Relationships: [
