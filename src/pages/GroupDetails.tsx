@@ -59,9 +59,9 @@ export default function GroupDetails() {
     fetchYoutubeMetrics();
     fetchTwitchMetrics();
 
-    // Configurar chamadas periódicas a cada 30 segundos
-    const youtubeInterval = setInterval(fetchYoutubeMetrics, 30000);
-    const twitchInterval = setInterval(fetchTwitchMetrics, 30000);
+    // Configurar chamadas periódicas a cada 59 segundos
+    const youtubeInterval = setInterval(fetchYoutubeMetrics, 59000);
+    const twitchInterval = setInterval(fetchTwitchMetrics, 59000);
 
     // Cleanup ao desmontar o componente
     return () => {
