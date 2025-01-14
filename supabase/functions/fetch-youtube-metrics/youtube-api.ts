@@ -5,8 +5,8 @@ const cache = new Map<string, { data: any, timestamp: number }>();
 const CACHE_DURATIONS = {
   CHANNEL_ID: 24 * 60 * 60 * 1000, // 24 horas para IDs de canais
   LIVE_STATUS: {
-    ONLINE: 1 * 60 * 1000,  // 1 minuto para canais online
-    OFFLINE: 5 * 60 * 1000, // 5 minutos para canais offline
+    ONLINE: 2 * 60 * 1000,  // 2 minutos para canais online
+    OFFLINE: 10 * 60 * 1000, // 10 minutos para canais offline
   }
 };
 
@@ -117,7 +117,7 @@ export async function fetchLiveStreamData(channelId: string, apiKey: string) {
   console.log(`[${new Date().toISOString()}] Buscando dados de live para canal ${channelId}`);
   
   // Buscar lives ativas com campos reduzidos
-  const liveUrl = `https://www.googleapis.com/youtube/v3/search?part=id&channelId=${channelId}&eventType=live&type=video&maxResults=50&key=${apiKey}&fields=items(id/videoId)`;
+  const liveUrl = `https://www.googleapis.com/youtube/v3/search?part=id&channelId=${channelId}&eventType=live&type=video&maxResults=1&key=${apiKey}&fields=items(id/videoId)`;
   
   const liveResponse = await retryOperation(async () => {
     const response = await fetch(liveUrl);
