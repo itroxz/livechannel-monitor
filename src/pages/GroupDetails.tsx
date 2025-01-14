@@ -53,20 +53,41 @@ export default function GroupDetails() {
     }
   };
 
+  // Função para chamar o endpoint de métricas do TikTok
+  const fetchTikTokMetrics = async () => {
+    try {
+      console.log("Iniciando chamada para fetch-tiktok-metrics");
+      const { data, error } = await supabase.functions.invoke('fetch-tiktok-metrics');
+      
+      if (error) {
+        console.error("Erro ao chamar fetch-tiktok-metrics:", error);
+        return;
+      }
+      
+      console.log("Resposta do fetch-tiktok-metrics:", data);
+    } catch (error) {
+      console.error("Erro ao atualizar métricas do TikTok:", error);
+      toast.error("Erro ao atualizar métricas do TikTok");
+    }
+  };
+
   // Efeito para iniciar as chamadas periódicas
   useEffect(() => {
     // Primeira chamada imediata
     fetchYoutubeMetrics();
     fetchTwitchMetrics();
+    fetchTikTokMetrics();
 
     // Configurar chamadas periódicas a cada 59 segundos
     const youtubeInterval = setInterval(fetchYoutubeMetrics, 59000);
     const twitchInterval = setInterval(fetchTwitchMetrics, 59000);
+    const tiktokInterval = setInterval(fetchTikTokMetrics, 59000);
 
     // Cleanup ao desmontar o componente
     return () => {
       clearInterval(youtubeInterval);
       clearInterval(twitchInterval);
+      clearInterval(tiktokInterval);
     };
   }, []);
 

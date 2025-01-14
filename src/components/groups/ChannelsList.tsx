@@ -71,6 +71,20 @@ export function ChannelsList({ channels, groupId, onDeleteChannel }: ChannelsLis
         return <Youtube className="h-4 w-4 text-[#FF0000]" />;
       case 'twitch':
         return <Twitch className="h-4 w-4 text-[#9146FF]" />;
+      case 'tiktok':
+        return (
+          <svg
+            className="h-4 w-4"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M19.321 5.562a5.124 5.124 0 0 1-3.585-1.476A5.12 5.12 0 0 1 14.262.5h-4.034v13.95c0 1.763-1.435 3.198-3.198 3.198-1.763 0-3.198-1.435-3.198-3.198 0-1.763 1.435-3.198 3.198-3.198.354 0 .69.065 1.005.168v-4.034c-.33-.033-.663-.05-.999-.05C3.154 7.336 0 10.49 0 14.372c0 3.882 3.154 7.036 7.036 7.036 3.882 0 7.036-3.154 7.036-7.036V9.858a9.193 9.193 0 0 0 5.249 1.651v-4.034c0-1.763 1.435-3.198 3.198-3.198h.999V.5h-.999c-1.763 0-3.198 1.435-3.198 3.198v1.864z"
+              fill="#000000"
+            />
+          </svg>
+        );
       default:
         return null;
     }
@@ -82,6 +96,8 @@ export function ChannelsList({ channels, groupId, onDeleteChannel }: ChannelsLis
         return 'hover:bg-red-50 border-red-100';
       case 'twitch':
         return 'hover:bg-purple-50 border-purple-100';
+      case 'tiktok':
+        return 'hover:bg-gray-50 border-gray-100';
       default:
         return 'hover:bg-gray-50 border-gray-100';
     }
@@ -125,7 +141,9 @@ export function ChannelsList({ channels, groupId, onDeleteChannel }: ChannelsLis
                     <div className="flex items-center gap-2">
                       <Badge variant="default" className={cn(
                         "bg-gradient-to-r shadow-sm",
-                        channel.platform.toLowerCase() === 'youtube' ? "from-red-500 to-red-600" : "from-purple-500 to-purple-600"
+                        channel.platform.toLowerCase() === 'youtube' ? "from-red-500 to-red-600" :
+                        channel.platform.toLowerCase() === 'twitch' ? "from-purple-500 to-purple-600" :
+                        "from-gray-500 to-gray-600"
                       )}>
                         {viewersCount.toLocaleString()} assistindo
                       </Badge>

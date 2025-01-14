@@ -52,8 +52,8 @@ export function ChannelForm({ groupId, channelId, onSuccess }: ChannelFormProps)
         return "Ex: bigodezerah (apenas o nome do usuário)";
       case "youtube":
         return "Ex: @channelname ou nome do canal";
-      case "kick":
-        return "Ex: channelname (apenas o nome do usuário)";
+      case "tiktok":
+        return "Ex: @username (nome do usuário)";
       default:
         return "Selecione uma plataforma primeiro";
     }
@@ -65,8 +65,8 @@ export function ChannelForm({ groupId, channelId, onSuccess }: ChannelFormProps)
         return "Digite apenas o nome do usuário, não a URL completa. Ex: se o canal é https://www.twitch.tv/bigodezerah, digite apenas 'bigodezerah'";
       case "youtube":
         return "Digite o @ do canal ou o nome do canal como aparece na URL";
-      case "kick":
-        return "Digite apenas o nome do usuário como aparece na URL do canal";
+      case "tiktok":
+        return "Digite o nome do usuário como aparece no perfil do TikTok, incluindo o @";
       default:
         return "";
     }
@@ -123,6 +123,12 @@ export function ChannelForm({ groupId, channelId, onSuccess }: ChannelFormProps)
           toast.error(error.message);
           return;
         }
+      }
+
+      // Para TikTok, remover o @ se existir
+      if (values.platform === 'tiktok') {
+        channelInfo.channel_name = values.username.replace('@', '');
+        channelInfo.channel_id = channelInfo.channel_name;
       }
 
       if (channelId) {
@@ -190,7 +196,7 @@ export function ChannelForm({ groupId, channelId, onSuccess }: ChannelFormProps)
                 <SelectContent>
                   <SelectItem value="twitch">Twitch</SelectItem>
                   <SelectItem value="youtube">YouTube</SelectItem>
-                  <SelectItem value="kick">Kick</SelectItem>
+                  <SelectItem value="tiktok">TikTok</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
