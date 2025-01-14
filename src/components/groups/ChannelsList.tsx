@@ -30,6 +30,7 @@ interface Channel {
   platform: string;
   channel_id: string;
   peak_viewers_count: number;
+  peak_viewers_timestamp: string;
 }
 
 interface ChannelsListProps {
@@ -98,13 +99,16 @@ export function ChannelsList({ channels, groupId, onDeleteChannel }: ChannelsLis
             console.log(`Processando canal ${channel.channel_name}:`, {
               id: channel.id,
               latestMetric,
-              peakViewers: channel.peak_viewers_count
+              peakViewers: channel.peak_viewers_count,
+              peakTimestamp: channel.peak_viewers_timestamp
             });
 
             const isLive = latestMetric?.is_live ?? false;
             const viewersCount = latestMetric?.viewers_count ?? 0;
             const peakViewersCount = channel.peak_viewers_count;
-            const peakDate = latestMetric?.timestamp ? format(new Date(latestMetric.timestamp), "dd/MM/yyyy HH:mm") : '';
+            const peakDate = channel.peak_viewers_timestamp 
+              ? format(new Date(channel.peak_viewers_timestamp), "dd/MM/yyyy HH:mm")
+              : '';
 
             return (
               <div
@@ -125,19 +129,21 @@ export function ChannelsList({ channels, groupId, onDeleteChannel }: ChannelsLis
                       )}>
                         {viewersCount.toLocaleString()} assistindo
                       </Badge>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger>
-                            <Badge variant="outline" className="flex items-center gap-1 bg-white">
-                              <TrendingUp className="h-3 w-3" />
-                              {peakViewersCount.toLocaleString()}
-                            </Badge>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Pico de {peakViewersCount.toLocaleString()} viewers em {peakDate}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                      {peakViewersCount > 0 && peakDate && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger>
+                              <Badge variant="outline" className="flex items-center gap-1 bg-white">
+                                <TrendingUp className="h-3 w-3" />
+                                {peakViewersCount.toLocaleString()}
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Pico de {peakViewersCount.toLocaleString()} viewers em {peakDate}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
                     </div>
                   ) : (
                     <Badge variant="secondary" className="bg-gray-100 text-gray-600">Offline</Badge>
