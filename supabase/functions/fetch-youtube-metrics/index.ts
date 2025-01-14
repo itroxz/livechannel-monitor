@@ -7,9 +7,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// Cache para armazenar resultados por 30 segundos
-const cache = new Map<string, { data: any, timestamp: number }>();
-const CACHE_DURATION = 30000; // 30 segundos em milissegundos
+const BATCH_SIZE = 5; // Número de canais processados por vez
+const PROCESSING_DELAY = 1000; // Delay entre lotes em ms
 
 serve(async (req) => {
   console.log('[YouTube Metrics] Iniciando execução da função');
@@ -48,83 +47,81 @@ serve(async (req) => {
       );
     }
 
-    const results = await Promise.all(channels.map(async (channel) => {
-      try {
-        console.log(`Processando canal: ${channel.channel_name}`);
-        
-        // Verificar cache
-        const cacheKey = `channel_${channel.id}`;
-        const now = Date.now();
-        const cached = cache.get(cacheKey);
-        
-        if (cached && (now - cached.timestamp) < CACHE_DURATION) {
-          console.log(`Usando dados em cache para ${channel.channel_name}`);
-          return cached.data;
-        }
-        
-        const channelId = await validateYouTubeChannel(channel.channel_name, YOUTUBE_API_KEY);
-        if (!channelId) {
+    // Processar canais em lotes
+    const results = [];
+    for (let i = 0; i < channels.length; i += BATCH_SIZE) {
+      const batch = channels.slice(i, i + BATCH_SIZE);
+      console.log(`Processando lote ${i / BATCH_SIZE + 1} de ${Math.ceil(channels.length / BATCH_SIZE)}`);
+      
+      const batchResults = await Promise.all(batch.map(async (channel) => {
+        try {
+          console.log(`Processando canal: ${channel.channel_name}`);
+          
+          const channelId = await validateYouTubeChannel(channel.channel_name, YOUTUBE_API_KEY);
+          if (!channelId) {
+            return { 
+              channel: channel.channel_name, 
+              success: false, 
+              error: 'Canal não encontrado' 
+            };
+          }
+          
+          const metrics = await fetchLiveStreamData(channelId, YOUTUBE_API_KEY);
+          
+          if (metrics.isLive) {
+            // Inserir nova métrica
+            const { error: metricsError } = await supabase
+              .from('metrics')
+              .insert({
+                channel_id: channel.id,
+                viewers_count: metrics.viewersCount,
+                is_live: metrics.isLive,
+                timestamp: new Date().toISOString()
+              });
+
+            if (metricsError) {
+              console.error(`Erro ao inserir métricas para ${channel.channel_name}:`, metricsError);
+              throw metricsError;
+            }
+
+            // Atualizar peak_viewers_count se necessário
+            if (metrics.viewersCount > (channel.peak_viewers_count || 0)) {
+              const { error: updateError } = await supabase
+                .from('channels')
+                .update({ peak_viewers_count: metrics.viewersCount })
+                .eq('id', channel.id);
+
+              if (updateError) {
+                console.error(`Erro ao atualizar peak_viewers_count para ${channel.channel_name}:`, updateError);
+                throw updateError;
+              }
+              
+              console.log(`Atualizado peak_viewers_count para ${channel.channel_name}: ${metrics.viewersCount}`);
+            }
+          }
+          
+          return { 
+            channel: channel.channel_name, 
+            success: true, 
+            metrics 
+          };
+        } catch (error) {
+          console.error(`Erro processando canal ${channel.channel_name}:`, error);
           return { 
             channel: channel.channel_name, 
             success: false, 
-            error: 'Canal não encontrado' 
+            error: error instanceof Error ? error.message : String(error)
           };
         }
-        
-        const metrics = await fetchLiveStreamData(channelId, YOUTUBE_API_KEY);
-        
-        if (metrics.isLive) {
-          // Inserir nova métrica
-          const { error: metricsError } = await supabase
-            .from('metrics')
-            .insert({
-              channel_id: channel.id,
-              viewers_count: metrics.viewersCount,
-              is_live: metrics.isLive,
-              timestamp: new Date().toISOString()
-            });
-
-          if (metricsError) {
-            console.error(`Erro ao inserir métricas para ${channel.channel_name}:`, metricsError);
-            throw metricsError;
-          }
-
-          // Atualizar peak_viewers_count no canal se necessário
-          if (metrics.viewersCount > (channel.peak_viewers_count || 0)) {
-            const { error: updateError } = await supabase
-              .from('channels')
-              .update({ peak_viewers_count: metrics.viewersCount })
-              .eq('id', channel.id);
-
-            if (updateError) {
-              console.error(`Erro ao atualizar peak_viewers_count para ${channel.channel_name}:`, updateError);
-              throw updateError;
-            }
-            
-            console.log(`Atualizado peak_viewers_count para ${channel.channel_name}: ${metrics.viewersCount}`);
-          }
-          
-          console.log(`Canal ${channel.channel_name} tem ${metrics.viewersCount} espectadores`);
-        }
-        
-        const result = { channel: channel.channel_name, success: true, metrics };
-        
-        // Armazenar no cache
-        cache.set(cacheKey, {
-          data: result,
-          timestamp: now
-        });
-        
-        return result;
-      } catch (error) {
-        console.error(`Erro processando canal ${channel.channel_name}:`, error);
-        return { 
-          channel: channel.channel_name, 
-          success: false, 
-          error: error instanceof Error ? error.message : String(error)
-        };
+      }));
+      
+      results.push(...batchResults);
+      
+      // Adicionar delay entre lotes para evitar sobrecarga
+      if (i + BATCH_SIZE < channels.length) {
+        await new Promise(resolve => setTimeout(resolve, PROCESSING_DELAY));
       }
-    }));
+    }
 
     return new Response(
       JSON.stringify({ 
